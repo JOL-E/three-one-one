@@ -7,11 +7,11 @@ In order. Each milestone ends with something that works and that I understand.
   endpoint with one or two tools (`list_items`, `add_item`) on a throwaway
   model, connected to Claude Code on the Mac over `localhost`, **no auth**.
   Goal: see every request and response, prove Django + the async MCP SDK work
-  together. Decide the project layout here.
+  together. Decide the project layout here. ✅
 - **M2 Data model:** Project, Item, Activity with the states and rules from
-  DECISIONS; admin; tests for every rule.
+  DECISIONS; admin; tests for every rule. ✅
 - **M3 Full tool set:** the tools from DECISIONS #7, rules enforced by the
-  server, tool descriptions written and tested with Claude.
+  server, tool descriptions written and tested with Claude. ✅
 - **M4 UI:** React PWA. Quick capture, inbox, drag-to-sort, move to project,
   project views, item detail with activity. Native feel on iPhone and Mac.
 - **M5 Auth:** login + lockout, OAuth (authorization server + metadata +

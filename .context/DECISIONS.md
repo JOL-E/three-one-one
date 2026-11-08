@@ -91,8 +91,55 @@ use, plus an MCP server so every Claude can read and write the same data.
     notifications, whatever the server is configured to do. Everything else
     stays plain JSON. Matters in M6: the proxy must allow long-lived responses.
 
+## 2026-11-08: M2 data model
+
+23. **Services are sync, one transaction per write.** Django 6.1 has no async
+    `transaction.atomic`, and a status change must write the item and its log
+    entry together. The async MCP tools call them through `sync_to_async`.
+24. **Inbox = no project, not a status.** Status is Open / Doing / Done; an
+    inbox item is always Open. Sorting into a project is a move: logged, but
+    no comment needed. One fact stored once instead of two kept in sync.
+25. **A project with items can't be deleted** (FK `PROTECT`). Archiving is the
+    normal end; deleting is for mistakes, and it shouldn't take items with it.
+26. **Activity log records: created, comment, status change, move.** Edits to
+    title/details aren't logged (noise). Append-only. Status/move entries keep
+    old and new value as text, as they were at the time.
+27. **Order = integer `position`, renumbered by the server, gapless.** Only
+    Open/Doing items in a project have one; new and reopened items go to the
+    bottom. Done items sort by `done_at`, newest first; the inbox by creation,
+    newest first, and can't be reordered.
+28. **Project state: any to any, owner only. General is fixed:** one only,
+    always Building, can't be archived or deleted. Created by a data migration.
+29. **Invariants also live in the database** as check/unique constraints; the
+    services check first for readable messages. No unique (project, position):
+    SQLite can't defer it, so every renumbering would need two passes.
+30. **M1's migration was regenerated, not extended.** It was never deployed.
+
+## 2026-11-08: M3 tool set
+
+31. **Tool results are plain text (compact JSON), no `outputSchema`.** The
+    schema made each tool 2–3.5× bigger in `tools/list`, in every
+    conversation; Claude reads the text either way and nothing else consumes it.
+32. **Ten tools:** `list_projects`, `list_items`, `get_item`, `add_item`,
+    `update_item`, `set_status`, `move_item`, `add_comment`, `create_project`,
+    `reorder_items`. `add_comment` and `get_item` added to #7: commenting is how
+    Claude keeps items current; lists stay short (titles only) and details come
+    on demand. Shared concepts live once in the server `instructions`.
+33. **Reordering is confirmed by the user through elicitation**, not a hint.
+    The server answers the first call with `input_required` and a question;
+    only an "accept" in the retry reorders. A client without elicitation can't
+    reorder at all. The tool takes the whole new order (one question per
+    reshuffle), checked before asking so nobody confirms an invalid list.
+
+34. **`list_items` can search** (all words in the title, inbox and every
+    project, results name their project). Tested with Claude Code: finding one
+    item by name took 5 calls walking every project; with search it's one.
+35. **Pydantic's generated `title` labels are stripped from `tools/list`**
+    (about 13% smaller). They only repeat the property names.
+
 ## Open
 
 - Copyright holder in `LICENSE`: currently the GitHub handle.
 - Visual direction and style guide (reuse my native-feel checklist).
 - Whether to-dos from my other projects move into 311 once it works.
+- Can items be added to or moved into an Archived project? Allowed for now.
