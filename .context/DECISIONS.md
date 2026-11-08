@@ -1,0 +1,76 @@
+# Decisions
+
+Dated, with the why. A change of mind is a new entry, not an edit.
+
+## 2026-11-08: Initial design (one long design session)
+
+**What it is.** An inbox for side-project ideas that Claude can reach. Started
+from a real problem: ideas scattered across chats, sessions and the phone, with
+every markdown-based list going stale. The fix is an app with a UI I actually
+use, plus an MCP server so every Claude can read and write the same data.
+
+1. **One person per installation.** Far simpler than accounts and sharing;
+   typical for self-hosted tools.
+2. **Dev-focused, repo link optional.** A sharp product beats a general to-do
+   app competing with Todoist and co. Short-lived, date-driven things (trips)
+   belong in other tools. The repo link is optional, so non-code projects fit.
+3. **Projects: Idea → Building → Live → Archived** (not strictly linear; Live
+   can go back to Building). "Idea" collects notes for something that might
+   become a project. A permanent **General** project holds "look into / try"
+   items that will never be their own project.
+4. **Items: Inbox → Open → Doing → Done**, delete anytime. Inbox = no project
+   yet; sorting = assigning a project.
+5. **Activity log on every item**, author (me or Claude) + time + text.
+   **A status change requires a comment**, enforced by the server: a rule in a
+   tool description is a request, a server check is a rule.
+6. **Priority = order within a project.** No global order (simplest; answers
+   "what's next in X").
+7. **What Claude may do:** list projects/items, read items, add items (inbox
+   unless a project is given), update title/details/status (with comment), move
+   items, create projects (always as Idea), reorder (marked so that clients ask
+   me before every call). **Only I** delete and change a project's state.
+   Claude captures and keeps things current; decisions stay with me. Few tools,
+   because every tool description costs context in every conversation.
+8. **Stack: Django + Django Ninja + SQLite + MCP Python SDK; React + TypeScript
+   PWA.** Python because it's my strong language and learning MCP is easier in
+   code I read fluently. Django for login, admin and a mature OAuth library
+   (django-oauth-toolkit). React PWA because the UI must feel native
+   on Mac and iPhone (instant drag-to-sort, transitions); HTMX would round-trip
+   on every interaction. TypeScript backend considered (reference MCP SDK, one
+   language) and rejected: small gain, loses Django's batteries.
+9. **SQLite, not Postgres.** Plenty for one user; for self-hosters it's one
+   file instead of a second server, and backup is a file copy.
+10. **Offline capture not in v1**, but item IDs are generated at creation so it
+    can be added without duplicates later.
+11. **Auth.** Django login for me. OAuth 2.1 for MCP clients: the app is both
+    authorization server and resource server (django-oauth-toolkit + the two
+    `.well-known` metadata documents), PKCE, short access tokens + refresh.
+    **Automatic client registration in v1** (other MCP clients expect it; it's
+    about a page of code plus rate limit and cleanup); a pre-registered client
+    only for the first test. Check at build time whether claude.ai prefers the
+    newer Client ID Metadata Documents. **"Connected apps" page** with revoke.
+    **Lockout of repeated failed logins** from day one: the MCP and OAuth
+    endpoints must be public (claude.ai calls from Anthropic's servers), so the
+    app's own login is the real lock.
+12. **One Docker image for every installation, mine included.** Running what
+    others run keeps the self-hosting path tested daily. Async server (uvicorn),
+    one process (safe for SQLite). Frontend built in the image. Multi-arch
+    builds in GitHub Actions. Public address via a `BASE_URL` setting.
+13. **MIT license.** Chosen deliberately after discussing AGPL and PolyForm
+    Noncommercial: simplest and most welcoming, accepting that commercial use
+    is allowed.
+14. **Private until it works, written as public from the first commit.** No
+    secrets, no real data, nothing setup-specific; enforced by a pre-commit
+    guard. Squashing history before going public is the fallback, not the plan.
+15. **Name: 311**, after New York's line for reporting anything: it gets a
+    number, is routed to the right place and tracked until closed. Repo and
+    package `three-one-one` / `three_one_one`: searchable, and no special cases
+    for a name starting with a digit.
+16. **Mode: Explain, then build.** I want to understand how MCP works.
+
+## Open
+
+- Copyright holder in `LICENSE`: currently the GitHub handle.
+- Visual direction and style guide (reuse my native-feel checklist).
+- Whether existing to-dos from my other projects move
+  into 311 once it works.

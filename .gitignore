@@ -1,0 +1,27 @@
+# OS / editors
+.DS_Store
+.idea/
+.vscode/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Secrets and local data: never committed
+.env
+.private-denylist
+*.sqlite3
+*.sqlite3-*
+*.db
+data/
+
+# Frontend
+node_modules/
+frontend/dist/
+
+# Claude Code local settings
+.claude/settings.local.json

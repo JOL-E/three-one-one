@@ -1,0 +1,19 @@
+# Install once (M1, after creating the venv):  pre-commit install --install-hooks
+# Lint, format, type and test hooks are added in M1 with the code.
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: detect-private-key
+
+  - repo: local
+    hooks:
+      - id: private-data
+        name: no real data, nothing personal
+        entry: python3 scripts/check_private_data.py
+        language: system
+        exclude: ^\.pre-commit-config\.yaml$
