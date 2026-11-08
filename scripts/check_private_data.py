@@ -21,7 +21,11 @@ def load_denylist() -> list[str]:
     if not DENYLIST.exists():
         return []
     lines = DENYLIST.read_text(encoding="utf-8").splitlines()
-    return [line.strip().lower() for line in lines if line.strip() and not line.startswith("#")]
+    return [
+        line.strip().lower()
+        for line in lines
+        if line.strip() and not line.startswith("#")
+    ]
 
 
 def main(paths: list[str]) -> int:
@@ -42,7 +46,9 @@ def main(paths: list[str]) -> int:
         for entry in denied:
             if entry in text:
                 line_no = text[: text.index(entry)].count("\n") + 1
-                problems.append(f"{name}:{line_no}: contains an entry from .private-denylist")
+                problems.append(
+                    f"{name}:{line_no}: contains an entry from .private-denylist"
+                )
     if problems:
         print("Private-data check failed:", *problems, sep="\n  ")
         return 1

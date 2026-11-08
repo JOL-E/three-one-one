@@ -32,11 +32,23 @@ This repo goes public. Treat every file, commit message and issue as public now:
 ## Stack & structure
 
 Django + Django Ninja + SQLite + MCP Python SDK (backend), React + TypeScript
-PWA (frontend), one Docker image. Structure: _(added in M1)_
+PWA (frontend), one Docker image. Python deps with `uv`.
+
+- `backend/config/`: settings (all from env vars), URLs, `asgi.py` (routes
+  `/mcp` to the MCP SDK, everything else to Django)
+- `backend/inbox/`: models, `services.py` (every rule lives here), admin
+- `backend/mcp_tools/`: MCP server and tools (thin), dev wire logger.
+  Never name a package `mcp`: it would shadow the SDK.
+- `frontend/`: _(M4)_
 
 ## Run & test
 
-_(added in M1)_
+From `backend/`:
+- Run: `DEBUG=1 uv run uvicorn config.asgi:application --reload` (prints every
+  MCP message). Migrate first: `DEBUG=1 uv run python manage.py migrate`.
+- Test: `uv run pytest`. Types: `uv run mypy .`. Lint: `uv run ruff check .`
+- Connect Claude Code: `claude mcp add --transport http 311-dev http://localhost:8000/mcp`
+- MCP SDK is v2 (`MCPServer`, not `FastMCP`); check the installed source, not v1 docs.
 
 ## Deploy
 

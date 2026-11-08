@@ -1,5 +1,4 @@
-# Install once (M1, after creating the venv):  pre-commit install --install-hooks
-# Lint, format, type and test hooks are added in M1 with the code.
+# Install once:  uv run --project backend pre-commit install --install-hooks
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
@@ -17,3 +16,28 @@ repos:
         entry: python3 scripts/check_private_data.py
         language: system
         exclude: ^\.pre-commit-config\.yaml$
+
+  - repo: local
+    hooks:
+      - id: ruff-format
+        name: ruff format
+        entry: uv run --project backend ruff format
+        language: system
+        types: [python]
+      - id: ruff
+        name: ruff check
+        entry: uv run --project backend ruff check --fix
+        language: system
+        types: [python]
+      - id: mypy
+        name: mypy (strict)
+        entry: bash -c "cd backend && uv run mypy ."
+        language: system
+        files: ^backend/
+        pass_filenames: false
+      - id: pytest
+        name: pytest
+        entry: bash -c "cd backend && uv run pytest -q"
+        language: system
+        files: ^backend/
+        pass_filenames: false

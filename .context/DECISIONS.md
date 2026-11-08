@@ -68,9 +68,31 @@ use, plus an MCP server so every Claude can read and write the same data.
     for a name starting with a digit.
 16. **Mode: Explain, then build.** I want to understand how MCP works.
 
+## 2026-11-08: M1 spike setup
+
+17. **Layout: `backend/` + `frontend/`**; Django apps `config`,
+    `inbox`, `mcp_tools`. Familiar, and the frontend gets its own toolchain.
+18. **`uv` for Python dependencies** (Claude's call, delegated). Lockfile with
+    exact versions, installs Python itself, fast; the Docker image can use it
+    directly. Mainstream enough to count as boring.
+19. **One ASGI app, routed by path.** `/mcp` → the MCP SDK's own app, the rest
+    → Django. No django-mcp wrapper library (hides what we want to learn, one
+    more dependency); not inside a Django view (the SDK needs ASGI startup
+    events, which Django doesn't forward).
+20. **Stateless HTTP + plain JSON responses.** Every POST stands alone, no
+    session IDs, no SSE streaming. Fits one process and is readable with curl.
+    Revisit only if we need server→client messages.
+21. **MCP Python SDK v2** (`MCPServer`). It also answers the newer
+    handshake-free protocol revision (2026-07-28) next to the older ones.
+
+22. **Correction to #20: one request streams.** Claude Code speaks the
+    handshake-free revision (2026-07-28). Its `subscriptions/listen` request
+    is always an SSE stream (pings every few seconds) for "tool list changed"
+    notifications, whatever the server is configured to do. Everything else
+    stays plain JSON. Matters in M6: the proxy must allow long-lived responses.
+
 ## Open
 
 - Copyright holder in `LICENSE`: currently the GitHub handle.
 - Visual direction and style guide (reuse my native-feel checklist).
-- Whether existing to-dos from my other projects move
-  into 311 once it works.
+- Whether to-dos from my other projects move into 311 once it works.
