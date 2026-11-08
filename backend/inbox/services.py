@@ -14,7 +14,7 @@ from uuid import UUID
 from django.core.exceptions import ValidationError
 from django.core.validators import URLValidator
 from django.db import transaction
-from django.db.models import Max, QuerySet
+from django.db.models import Count, Max, QuerySet
 from django.utils import timezone
 
 from .models import Activity, ActivityKind, Author, Item, ItemStatus, Project, ProjectState
@@ -22,6 +22,10 @@ from .models import Activity, ActivityKind, Author, Item, ItemStatus, Project, P
 
 class RuleViolation(Exception):
     """A request broke a rule. The message is shown to the caller (me or Claude)."""
+
+
+class NotFound(RuleViolation):
+    """The project or item doesn't exist. The API answers 404 instead of 400."""
 
 
 def _required(text: str, message: str) -> str:
@@ -38,14 +42,58 @@ def get_project(project_id: UUID) -> Project:
     try:
         return Project.objects.get(pk=project_id)
     except Project.DoesNotExist:
-        raise RuleViolation(f"There is no project with id {project_id}.") from None
+        raise NotFound(f"There is no project with id {project_id}.") from None
 
 
 def get_item(item_id: UUID) -> Item:
     try:
         return Item.objects.select_related("project").get(pk=item_id)
     except Item.DoesNotExist:
-        raise RuleViolation(f"There is no item with id {item_id}.") from None
+        raise NotFound(f"There is no item with id {item_id}.") from None
+
+
+# --- Short item IDs (DECISIONS #40) -------------------------------------------
+# The shortest start of an item's UUID that no other item shares, at least 4 hex
+# characters, upper case: "3F9A". Computed on demand, never stored. An item's
+# short ID can grow when a new item shares its start; old references then
+# become ambiguous and are refused, naming the candidates (like git).
+
+SHORT_ID_MIN = 4
+
+
+def short_ids() -> dict[UUID, str]:
+    """Every item's short ID. Uniqueness is among all items, not just the ones shown."""
+    hexes = sorted(i.hex for i in Item.objects.values_list("id", flat=True))
+
+    def shared(a: str, b: str) -> int:
+        n = 0
+        while n < len(a) and a[n] == b[n]:
+            n += 1
+        return n
+
+    result: dict[UUID, str] = {}
+    for n, h in enumerate(hexes):
+        before = shared(h, hexes[n - 1]) if n > 0 else 0
+        after = shared(h, hexes[n + 1]) if n + 1 < len(hexes) else 0
+        result[UUID(h)] = h[: max(SHORT_ID_MIN, before + 1, after + 1)].upper()
+    return result
+
+
+def resolve_item(ref: str) -> Item:
+    """Find an item by its full UUID or any unique start of it ("3F9A", "#3f9a7")."""
+    key = ref.strip().lstrip("#").replace("-", "").lower()
+    if len(key) < SHORT_ID_MIN or any(c not in "0123456789abcdef" for c in key):
+        raise RuleViolation(f"{ref!r} is not an item id (at least {SHORT_ID_MIN} hex characters).")
+    if len(key) == 32:
+        return get_item(UUID(key))
+    matches = list(Item.objects.select_related("project").filter(id__istartswith=key)[:6])
+    if not matches:
+        raise NotFound(f"There is no item with id {ref}.")
+    if len(matches) > 1:
+        ids = short_ids()
+        names = ", ".join(f"{ids[i.id]} ({i.title})" for i in matches[:5])
+        raise RuleViolation(f"{ref} matches several items: {names}. Use more characters.")
+    return matches[0]
 
 
 def general_project() -> Project:
@@ -62,18 +110,63 @@ def list_projects(include_archived: bool = False) -> list[Project]:
     return list(projects)
 
 
-def create_project(name: str, description: str = "", repo_url: str = "") -> Project:
-    """New projects always start as Idea; only the owner moves them on (DECISIONS #7)."""
+def open_item_counts() -> dict[UUID, int]:
+    """Open and doing items per project (the sidebar's numbers)."""
+    rows = (
+        Item.objects.filter(project__isnull=False)
+        .exclude(status=ItemStatus.DONE)
+        .values("project")
+        .annotate(n=Count("id"))
+    )
+    return {row["project"]: row["n"] for row in rows}
+
+
+def _unique_name(name: str, exclude: UUID | None = None) -> str:
     name = _required(name, "A project needs a name.")
-    if Project.objects.filter(name__iexact=name).exists():
+    others = Project.objects.filter(name__iexact=name)
+    if exclude is not None:
+        others = others.exclude(pk=exclude)
+    if others.exists():
         raise RuleViolation(f"A project named {name!r} already exists.")
+    return name
+
+
+def _repo_url(repo_url: str) -> str:
     repo_url = repo_url.strip()
     if repo_url:
         try:
             URLValidator(schemes=["http", "https"])(repo_url)
         except ValidationError:
             raise RuleViolation(f"{repo_url!r} is not a valid http(s) URL.") from None
-    return Project.objects.create(name=name, description=description.strip(), repo_url=repo_url)
+    return repo_url
+
+
+def create_project(name: str, description: str = "", repo_url: str = "") -> Project:
+    """New projects always start as Idea; only the owner moves them on (DECISIONS #7)."""
+    return Project.objects.create(
+        name=_unique_name(name), description=description.strip(), repo_url=_repo_url(repo_url)
+    )
+
+
+def update_project(
+    project_id: UUID, name: str | None = None, description: str | None = None, repo_url: str | None = None
+) -> Project:
+    """Name, description and repo link; me or Claude (DECISIONS #37). State is separate.
+
+    General keeps its name: the MCP instructions refer to it by name.
+    """
+    project = get_project(project_id)
+    if name is not None:
+        name = _unique_name(name, exclude=project.id)
+        if project.is_general and name != project.name:
+            raise RuleViolation("The General project keeps its name.")
+        project.name = name
+    if description is not None:
+        project.description = description.strip()
+    if repo_url is not None:
+        project.repo_url = _repo_url(repo_url)
+    project.save()
+    return project
 
 
 def set_project_state(project_id: UUID, state: ProjectState) -> Project:
@@ -154,11 +247,23 @@ def search_items(query: str, include_done: bool = False) -> list[Item]:
 
 @transaction.atomic
 def add_item(
-    title: str, details: str = "", project_id: UUID | None = None, author: Author = Author.OWNER
+    title: str,
+    details: str = "",
+    project_id: UUID | None = None,
+    author: Author = Author.OWNER,
+    item_id: UUID | None = None,
 ) -> Item:
-    """Without a project the item lands in the inbox; with one, at the bottom of its list."""
+    """Without a project the item lands in the inbox; with one, at the bottom of its list.
+
+    The app may pass the new item's id (generated on the device), so it can show
+    the item before the server answers. Claude never does.
+    """
     title = _required(title, "An item needs a title.")
+    if item_id is not None and Item.objects.filter(pk=item_id).exists():
+        raise RuleViolation(f"An item with id {item_id} already exists.")
     item = Item(title=title, details=details.strip())
+    if item_id is not None:
+        item.id = item_id
     if project_id is not None:
         item.project = get_project(project_id)
         item.position = _next_position(project_id)
@@ -279,6 +384,12 @@ def add_comment(item_id: UUID, text: str, author: Author) -> Activity:
     return Activity.objects.create(
         item=get_item(item_id), author=author, kind=ActivityKind.COMMENT, text=text
     )
+
+
+def creators(item_ids: list[UUID]) -> dict[UUID, str]:
+    """Who created each item ("owner" or "claude"), from its first log entry."""
+    rows = Activity.objects.filter(kind=ActivityKind.CREATED, item_id__in=item_ids)
+    return dict(rows.values_list("item_id", "author"))
 
 
 def list_activity(item_id: UUID) -> list[Activity]:

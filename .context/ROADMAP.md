@@ -13,7 +13,7 @@ In order. Each milestone ends with something that works and that I understand.
 - **M3 Full tool set:** the tools from DECISIONS #7, rules enforced by the
   server, tool descriptions written and tested with Claude. ✅
 - **M4 UI:** React PWA. Quick capture, inbox, drag-to-sort, move to project,
-  project views, item detail with activity. Native feel on iPhone and Mac.
+  project views, item detail with activity. Native feel on iPhone and Mac. ✅
 - **M5 Auth:** login + lockout, OAuth (authorization server + metadata +
   automatic registration), connected apps page. Then claude.ai can connect.
 - **M6 Ship:** Docker image, CI with multi-arch builds and weekly rebuilds,

@@ -345,3 +345,81 @@ def test_db_rejects_status_change_without_comment() -> None:
     item = services.add_item("x")
     with pytest.raises(IntegrityError), transaction.atomic():
         Activity.objects.create(item=item, author=ME, kind=ActivityKind.STATUS)
+
+
+# --- Short ids (DECISIONS #40) -------------------------------------------------
+
+
+def make(hex_start: str) -> Item:
+    return services.add_item(f"Item {hex_start}", item_id=uuid.UUID(hex_start.ljust(32, "0")))
+
+
+def test_short_id_is_four_characters_when_unique() -> None:
+    item = make("abcd")
+    make("1234")
+    assert services.short_ids()[item.id] == "ABCD"
+
+
+def test_short_id_grows_until_unique() -> None:
+    a, b, c = make("3f9a7"), make("3f9a8"), make("3f00")
+    ids = services.short_ids()
+    assert (ids[a.id], ids[b.id], ids[c.id]) == ("3F9A7", "3F9A8", "3F00")
+
+
+def test_resolve_accepts_short_full_and_decorated_ids() -> None:
+    item = make("3f9a")
+    for ref in ["3F9A", "#3f9a", str(item.id), item.id.hex]:
+        assert services.resolve_item(ref) == item
+
+
+def test_resolve_refuses_ambiguous_too_short_and_unknown() -> None:
+    make("3f9a7"), make("3f9a8")
+    with pytest.raises(RuleViolation, match="matches several items"):
+        services.resolve_item("3f9a")
+    with pytest.raises(RuleViolation, match="at least 4"):
+        services.resolve_item("3f9")
+    with pytest.raises(services.NotFound):
+        services.resolve_item("ffff")
+
+
+def test_app_generated_item_id_is_kept_and_cannot_repeat() -> None:
+    item_id = uuid.uuid4()
+    assert services.add_item("x", item_id=item_id).id == item_id
+    with pytest.raises(RuleViolation, match="already exists"):
+        services.add_item("y", item_id=item_id)
+
+
+# --- Editing projects (DECISIONS #37) -------------------------------------------
+
+
+def test_update_project_changes_only_what_is_given(project: Project) -> None:
+    services.update_project(project.id, description="New notes")
+    project.refresh_from_db()
+    assert (project.name, project.description) == ("Synthetic project", "New notes")
+
+
+def test_update_project_keeps_names_unique_but_allows_own_name(project: Project) -> None:
+    services.create_project("Other")
+    with pytest.raises(RuleViolation, match="already exists"):
+        services.update_project(project.id, name="other")
+    services.update_project(project.id, name="SYNTHETIC PROJECT")  # same project, new casing
+
+
+def test_update_project_checks_repo_url(project: Project) -> None:
+    with pytest.raises(RuleViolation, match="valid http"):
+        services.update_project(project.id, repo_url="not a url")
+    assert services.update_project(project.id, repo_url="").repo_url == ""
+
+
+def test_general_project_keeps_its_name() -> None:
+    general = services.general_project()
+    with pytest.raises(RuleViolation, match="keeps its name"):
+        services.update_project(general.id, name="Misc")
+    services.update_project(general.id, description="Things to look into")
+
+
+def test_missing_project_or_item_is_not_found() -> None:
+    with pytest.raises(services.NotFound):
+        services.get_project(uuid.uuid4())
+    with pytest.raises(services.NotFound):
+        services.get_item(uuid.uuid4())

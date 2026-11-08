@@ -32,6 +32,7 @@ INSTRUCTIONS = """\
   permanent project for things to look into or try that will never be their own project.
 - An item belongs to a project or sits in the inbox (no project yet). Its status
   is open, doing or done; inbox items are always open.
+- Items have short ids like 3F9A; the user sees the same ids in the app (#3F9A).
 - A project's open and doing items are in priority order, top first. The user sets it.
 - When the user mentions an idea or task worth keeping, add it. It goes to the
   inbox unless the user names a project.
@@ -64,7 +65,7 @@ class Server(MCPServer):
 server = Server(name="311", version="0.1.0", instructions=INSTRUCTIONS)
 
 ProjectId = Annotated[UUID, Field(description="A project's id, from list_projects.")]
-ItemId = Annotated[UUID, Field(description="An item's id, from list_items.")]
+ItemId = Annotated[str, Field(description="An item's id, like 3F9A.")]
 
 
 def tool(*, read_only: bool = False, destructive: bool = False) -> Callable[[Callable[..., object]], object]:
@@ -94,6 +95,15 @@ async def run[**P, R](fn: Callable[P, R], *args: P.args, **kwargs: P.kwargs) -> 
         raise ToolError(str(exc)) from exc
 
 
+async def resolve(ref: str) -> Item:
+    """An item from a short id ("3F9A") or a full one (DECISIONS #40)."""
+    return await run(services.resolve_item, ref)
+
+
+def _resolve_all(refs: list[str]) -> list[UUID]:
+    return [services.resolve_item(ref).id for ref in refs]
+
+
 # --- What the tools return ---------------------------------------------------
 
 
@@ -116,15 +126,15 @@ class ProjectOut(BaseModel):
 
 
 class ItemSummary(BaseModel):
-    id: UUID
+    id: str  # short id (DECISIONS #40); saves context and matches what the user sees
     title: str
     status: str
     project: str | None = None  # only in search results; "Inbox" if none
 
     @classmethod
-    def of(cls, i: Item, with_project: bool = False) -> ItemSummary:
+    def of(cls, i: Item, ids: dict[UUID, str], with_project: bool = False) -> ItemSummary:
         project = (i.project.name if i.project else "Inbox") if with_project else None
-        return cls(id=i.id, title=i.title, status=i.status, project=project)
+        return cls(id=ids[i.id], title=i.title, status=i.status, project=project)
 
 
 class ActivityOut(BaseModel):
@@ -141,7 +151,7 @@ class ActivityOut(BaseModel):
 
 
 class ItemOut(BaseModel):
-    id: UUID
+    id: str
     title: str
     details: str | None = None
     status: str
@@ -151,9 +161,9 @@ class ItemOut(BaseModel):
     activity: list[ActivityOut] | None = None
 
     @classmethod
-    def of(cls, i: Item, activity: list[Activity] | None = None) -> ItemOut:
+    def of(cls, i: Item, ids: dict[UUID, str], activity: list[Activity] | None = None) -> ItemOut:
         return cls(
-            id=i.id,
+            id=ids[i.id],
             title=i.title,
             details=i.details or None,
             status=i.status,
@@ -194,24 +204,25 @@ async def list_items(
     To find an item the user mentions, use search instead of listing every project.
     Titles and status only; use get_item for details and history.
     """
+    ids = await run(services.short_ids)
     if search is not None:
         found = await run(services.search_items, search, include_done)
-        return as_text([ItemSummary.of(i, with_project=True) for i in found])
+        return as_text([ItemSummary.of(i, ids, with_project=True) for i in found])
     if project_id is None:
         items = await run(services.list_inbox)
     else:
         items = await run(services.list_project_items, project_id)
         if not include_done:
             items = [i for i in items if i.status != ItemStatus.DONE]
-    return as_text([ItemSummary.of(i) for i in items])
+    return as_text([ItemSummary.of(i, ids) for i in items])
 
 
 @tool(read_only=True)
 async def get_item(item_id: ItemId) -> str:
     """Get one item with its details and activity log."""
-    item = await run(services.get_item, item_id)
-    activity = await run(services.list_activity, item_id)
-    return as_text(ItemOut.of(item, activity))
+    item = await resolve(item_id)
+    activity = await run(services.list_activity, item.id)
+    return as_text(ItemOut.of(item, await run(services.short_ids), activity))
 
 
 # --- Writing -----------------------------------------------------------------
@@ -228,14 +239,14 @@ async def add_item(
     With one, it goes to the bottom of that project's list.
     """
     item = await run(services.add_item, title, details, project_id, Author.CLAUDE)
-    return as_text(ItemOut.of(item))
+    return as_text(ItemOut.of(item, await run(services.short_ids)))
 
 
 @tool(destructive=True)
 async def update_item(item_id: ItemId, title: str | None = None, details: str | None = None) -> str:
     """Replace an item's title and/or details. Status changes go through set_status."""
-    item = await run(services.update_item, item_id, title, details)
-    return as_text(ItemOut.of(item))
+    item = await run(services.update_item, (await resolve(item_id)).id, title, details)
+    return as_text(ItemOut.of(item, await run(services.short_ids)))
 
 
 @tool()
@@ -251,8 +262,9 @@ async def set_status(
     ],
 ) -> str:
     """Change an item's status. Inbox items must be moved to a project first."""
-    item = await run(services.set_status, item_id, ItemStatus(status), comment, Author.CLAUDE)
-    return as_text(ItemOut.of(item))
+    ref = (await resolve(item_id)).id
+    item = await run(services.set_status, ref, ItemStatus(status), comment, Author.CLAUDE)
+    return as_text(ItemOut.of(item, await run(services.short_ids)))
 
 
 @tool()
@@ -264,14 +276,14 @@ async def move_item(
 
     Only open items can go back to the inbox.
     """
-    item = await run(services.move_item, item_id, project_id, Author.CLAUDE)
-    return as_text(ItemOut.of(item))
+    item = await run(services.move_item, (await resolve(item_id)).id, project_id, Author.CLAUDE)
+    return as_text(ItemOut.of(item, await run(services.short_ids)))
 
 
 @tool()
 async def add_comment(item_id: ItemId, text: str) -> str:
     """Add a note to an item's activity log: progress, a decision, a finding."""
-    await run(services.add_comment, item_id, text, Author.CLAUDE)
+    await run(services.add_comment, (await resolve(item_id)).id, text, Author.CLAUDE)
     return "Comment added."
 
 
@@ -279,6 +291,18 @@ async def add_comment(item_id: ItemId, text: str) -> str:
 async def create_project(name: str, description: str = "", repo_url: str = "") -> str:
     """Create a project. It starts as an idea; only the user changes a project's state."""
     project = await run(services.create_project, name, description, repo_url)
+    return as_text(ProjectOut.of(project))
+
+
+@tool(destructive=True)
+async def update_project(
+    project_id: ProjectId,
+    name: str | None = None,
+    description: str | None = None,
+    repo_url: Annotated[str | None, Field(description="Empty string removes it.")] = None,
+) -> str:
+    """Change a project's name, description or repo link. Only the user changes its state."""
+    project = await run(services.update_project, project_id, name, description, repo_url)
     return as_text(ProjectOut.of(project))
 
 
@@ -293,13 +317,13 @@ class Confirm(BaseModel):
     """Elicitation form with no fields: accept or decline is the whole answer."""
 
 
-async def confirm_order(project_id: UUID, item_ids: list[UUID]) -> Elicit[Confirm]:
+async def confirm_order(project_id: UUID, item_ids: list[str]) -> Elicit[Confirm]:
     # A resolver: runs before the tool body and gets the tool's arguments by name.
     # The list is checked before the user is asked, so they never confirm an
     # invalid order. The SDK pins the answer to this exact message: if the list
     # changes between rounds, the user is asked again.
     project = await run(services.get_project, project_id)
-    items = await run(services.check_order, project_id, item_ids)
+    items = await run(services.check_order, project_id, await run(_resolve_all, item_ids))
     lines = "\n".join(f"{n}. {item.title}" for n, item in enumerate(items, 1))
     return Elicit(f"Claude wants to reorder {project.name!r} to:\n{lines}", Confirm)
 
@@ -307,7 +331,7 @@ async def confirm_order(project_id: UUID, item_ids: list[UUID]) -> Elicit[Confir
 @tool(destructive=True)
 async def reorder_items(
     project_id: ProjectId,
-    item_ids: Annotated[list[UUID], Field(description="Every open and doing item's id, top first.")],
+    item_ids: Annotated[list[str], Field(description="Every open and doing item's id, top first.")],
     confirmation: Annotated[ElicitationResult[Confirm], Resolve(confirm_order)],
 ) -> str:
     """Set a project's priority order. Call only when the user asked to reprioritize.
@@ -316,7 +340,8 @@ async def reorder_items(
     """
     if not isinstance(confirmation, AcceptedElicitation):
         raise ToolError(f"The user did not confirm ({confirmation.action}). The order is unchanged.")
-    items = await run(services.set_order, project_id, item_ids)
+    items = await run(services.set_order, project_id, await run(_resolve_all, item_ids))
+    ids = await run(services.short_ids)
     # Claude never sees the question or the answer (client and server handle
     # them), so the result says it happened.
-    return "The user confirmed. New order: " + as_text([ItemSummary.of(i) for i in items])
+    return "The user confirmed. New order: " + as_text([ItemSummary.of(i, ids) for i in items])

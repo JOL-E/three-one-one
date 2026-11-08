@@ -1,6 +1,7 @@
 """End to end over HTTP: JSON-RPC in, JSON-RPC out, through the real ASGI app."""
 
 import json
+import uuid
 from typing import Any
 
 import pytest
@@ -23,6 +24,7 @@ TOOLS = {
     "move_item",
     "add_comment",
     "create_project",
+    "update_project",
     "reorder_items",
 }
 
@@ -213,3 +215,31 @@ def test_invalid_order_refused_before_asking(client: TestClient, ranked: Any) ->
     result = reorder(client, args, CAN_ELICIT)["result"]
     assert result["isError"] is True
     assert "exactly once" in result["content"][0]["text"]
+
+
+# --- Short ids (DECISIONS #40) and project edits (#37) -----------------------
+
+
+def test_results_use_short_ids_and_tools_accept_them(client: TestClient) -> None:
+    item = services.add_item("Synthetic idea")
+    listed = call(client, "list_items")[0]
+    assert listed["id"] == item.id.hex[:4].upper()
+    call(client, "add_comment", item_id=f"#{listed['id'].lower()}", text="Found it by short id")
+    assert item.activities.count() == 2
+
+
+def test_ambiguous_short_id_is_refused_naming_the_candidates(client: TestClient) -> None:
+    a = services.add_item("First", item_id=uuid.UUID("3f9a0000-0000-4000-8000-000000000001"))
+    services.add_item("Second", item_id=uuid.UUID("3f9a1000-0000-4000-8000-000000000002"))
+    result = call(client, "get_item", item_id="3F9A")
+    assert result["isError"] is True
+    assert "3F9A0 (First)" in result["content"][0]["text"]
+    assert call(client, "get_item", item_id="3F9A0")["title"] == a.title
+
+
+def test_claude_can_edit_a_project_but_not_its_state(client: TestClient) -> None:
+    project = services.create_project("Synthetic")
+    edited = call(client, "update_project", project_id=str(project.id), name="Renamed", repo_url="")
+    assert (edited["name"], edited["state"]) == ("Renamed", "idea")
+    tools = {t["name"]: t for t in rpc(client, "tools/list")["tools"]}
+    assert "state" not in tools["update_project"]["inputSchema"]["properties"]

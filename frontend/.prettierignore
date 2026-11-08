@@ -1,0 +1,4 @@
+dist
+dev-dist
+src/api/schema.d.ts
+src/api/openapi.json

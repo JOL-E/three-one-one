@@ -137,9 +137,52 @@ use, plus an MCP server so every Claude can read and write the same data.
 35. **Pydantic's generated `title` labels are stripped from `tools/list`**
     (about 13% smaller). They only repeat the property names.
 
+## 2026-11-08: M4 UI
+
+36. **The API requires a session from day one** (Ninja `django_auth`, CSRF on
+    writes). Until M5 builds the login screen and lockout, log in through
+    `/admin/`. An unauthenticated API never exists, not even on localhost.
+37. **Projects can be edited (name, description, repo link) by me and by
+    Claude:** a new `update_project` service, API endpoint and MCP tool. Adds
+    to #7/#32; changing a project's state stays owner-only.
+38. **Visual direction: "Ticket"** (mockup direction A of three). Every idea
+    reads like a filed report: hard rules, square corners, a mono face for
+    metadata, one street-sign green accent. Chosen over a stock-iOS look
+    (generic) and a dark dev-tool look: it ties to the name and doesn't look
+    like my other apps. **Dark is the default**, whatever the phone says; a setting
+    switches to light or to following the phone. My native-feel checklist
+    applies as is.
+39. **Drag-to-sort with `motion`'s Reorder**, no new dependency. Sorting is
+    within one short list, with a drag handle so it doesn't fight scrolling
+    on iPhone. Keyboard alternative: "Move to top / up / down" in the item
+    menu. dnd-kit rejected: `core` is quiet since 2024, `react` is pre-1.0.
+40. **Short item IDs, git-style** (`#3F9A`): the shortest unique start of the
+    item's UUID, at least 4 characters. Computed, never stored. The tools
+    accept any unique start; one matching several items is refused, naming
+    them. A per-item number (`#142`) was rejected: a second ID to store, and
+    offline capture couldn't know the next number. 4 characters alone would
+    collide within a few hundred items, hence "grow when needed".
+41. **General keeps its name** (its description can change). The MCP
+    instructions tell Claude what "General" is by name.
+42. **Frontend:** Vite, React 19, strict TypeScript, TanStack
+    Query, React Router, React Aria Components, `motion`, Tailwind v4,
+    vite-plugin-pwa; the TypeScript types are generated from Ninja's OpenAPI
+    schema, and a pre-commit hook fails when they drift from the backend.
+    Fonts self-hosted (@fontsource) so the shell works offline. Proven on the
+    iPhone already; what differs is the look, not the plumbing.
+43. **One set of URLs for both layouts:** `/inbox/:itemId?`,
+    `/p/:projectId/:itemId?`, `/search/:itemId?`. With an item, the phone
+    shows it full screen and the desktop beside the list. Links and the back
+    button work the same everywhere.
+44. **The app makes a new item's id** (`crypto.randomUUID`) and sends it, so
+    a captured idea shows, and opens, before the server answers. Builds on
+    #10; Claude's `add_item` doesn't take an id.
+45. **The theme is a per-device setting** (browser storage), not stored on
+    the server: a phone and a Mac may want different ones, and it needs no
+    login to apply before the first paint.
+
 ## Open
 
 - Copyright holder in `LICENSE`: currently the GitHub handle.
-- Visual direction and style guide (reuse my native-feel checklist).
 - Whether to-dos from my other projects move into 311 once it works.
 - Can items be added to or moved into an Archived project? Allowed for now.

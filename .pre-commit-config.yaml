@@ -6,7 +6,9 @@ repos:
       - id: check-added-large-files
       - id: check-merge-conflict
       - id: end-of-file-fixer
+        exclude: ^frontend/src/api/(openapi\.json|schema\.d\.ts)$  # generated
       - id: trailing-whitespace
+        exclude: ^frontend/src/api/(openapi\.json|schema\.d\.ts)$
       - id: detect-private-key
 
   - repo: local
@@ -40,4 +42,19 @@ repos:
         entry: bash -c "cd backend && uv run pytest -q"
         language: system
         files: ^backend/
+        pass_filenames: false
+
+  - repo: local
+    hooks:
+      - id: api-client
+        name: API types match the backend (npm run gen:api)
+        entry: bash -c "cd frontend && npm run -s gen:api >/dev/null && git diff --exit-code -- src/api"
+        language: system
+        files: ^backend/(inbox|config)/.*\.py$
+        pass_filenames: false
+      - id: frontend
+        name: frontend (prettier, tsc, oxlint, vitest)
+        entry: bash -c "cd frontend && npx prettier --check . >/dev/null && npm run -s typecheck && npm run -s lint && npm test -s"
+        language: system
+        files: ^frontend/
         pass_filenames: false

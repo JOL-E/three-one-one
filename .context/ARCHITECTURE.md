@@ -22,6 +22,18 @@ Only what the code can't say itself.
 - **The MCP door offers fewer verbs than the UI door.** Deleting and changing a
   project's state exist only in the UI.
 
+## The app (frontend)
+
+- **The server's types are the app's types.** Ninja's OpenAPI schema →
+  `openapi-typescript` → `src/api/schema.d.ts`. A renamed field breaks the
+  build, not production.
+- **Every read and write is a hook in `src/api/queries.ts`.** Reads are cached
+  and shown at once, then refreshed. Capture, reorder, move and delete change
+  the cache first and roll back if the server refuses; the server's message
+  shows as a toast. Every write ends by refetching (cheap for one user).
+- **The rules stay on the server.** The app asks "why?" before a status change
+  because the server would refuse it otherwise, not instead of the server.
+
 ## Public surface
 
 `/mcp`, `/oauth/…` and `/.well-known/…` must be reachable from the internet

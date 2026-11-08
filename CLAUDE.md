@@ -36,10 +36,13 @@ PWA (frontend), one Docker image. Python deps with `uv`.
 
 - `backend/config/`: settings (all from env vars), URLs, `asgi.py` (routes
   `/mcp` to the MCP SDK, everything else to Django)
-- `backend/inbox/`: models, `services.py` (every rule lives here), admin
+- `backend/inbox/`: models, `services.py` (every rule lives here), `api.py`
+  (the app's API at `/api/`, session + CSRF), admin
 - `backend/mcp_tools/`: MCP server and tools (thin), dev wire logger.
   Never name a package `mcp`: it would shadow the SDK.
-- `frontend/`: _(M4)_
+- `frontend/`: React PWA. `src/api/` (generated types + TanStack Query hooks:
+  every read and write), `src/screens/`, `src/components/`, `src/lib/`.
+  Look and native-feel rules: `.context/STYLE_GUIDE.md`.
 
 ## Run & test
 
@@ -49,6 +52,12 @@ From `backend/`:
 - Test: `uv run pytest`. Types: `uv run mypy .`. Lint: `uv run ruff check .`
 - Connect Claude Code: `claude mcp add --transport http 311-dev http://localhost:8000/mcp`
 - MCP SDK is v2 (`MCPServer`, not `FastMCP`); check the installed source, not v1 docs.
+
+From `frontend/` (with the backend running on :8000):
+- Run: `npm run dev` (http://localhost:5173, forwards `/api` and `/admin`).
+  Log in at `/admin/` with a superuser until M5.
+- Test: `npm test`. Types: `npm run typecheck`. Lint: `npm run lint`.
+- After changing the API: `npm run gen:api` (pre-commit checks it's current).
 
 ## Deploy
 
@@ -68,6 +77,7 @@ One Docker image for every installation. Not deployed yet.
 - `.context/ROADMAP.md`: milestones in order, and why.
 - `.context/DECISIONS.md`: every non-trivial decision, dated, with its why.
 - `.context/ARCHITECTURE.md`: what the code can't say itself.
+- `.context/STYLE_GUIDE.md`: the UI's look and native-feel requirements.
 
 ## End of session
 

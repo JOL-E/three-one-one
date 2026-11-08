@@ -1,14 +1,31 @@
 from django.contrib import admin
+from django.contrib.admin.views.decorators import staff_member_required
+from django.http import HttpRequest, HttpResponse
 from django.urls import path
 from ninja import NinjaAPI
+from ninja.security import django_auth
 
-api = NinjaAPI(title="311")
+from inbox.api import router as inbox_router
+from inbox.services import NotFound, RuleViolation
+
+# Every endpoint needs a session (and CSRF on writes) unless it says auth=None.
+# The interactive docs at /api/docs are for logged-in staff only.
+api = NinjaAPI(title="311", version="1", auth=django_auth, docs_decorator=staff_member_required)
 
 
-@api.get("/health")
-def health(request: object) -> dict[str, str]:
+@api.exception_handler(RuleViolation)
+def rule_violation(request: HttpRequest, exc: RuleViolation) -> HttpResponse:
+    """A broken rule's message goes to the app as is: `{"detail": "..."}`."""
+    status = 404 if isinstance(exc, NotFound) else 400
+    return api.create_response(request, {"detail": str(exc)}, status=status)
+
+
+@api.get("/health", auth=None)
+def health(request: HttpRequest) -> dict[str, str]:
     return {"status": "ok"}
 
+
+api.add_router("/", inbox_router)
 
 urlpatterns = [
     path("admin/", admin.site.urls),

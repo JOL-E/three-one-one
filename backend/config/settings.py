@@ -28,6 +28,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "ninja",  # for its docs page and `manage.py export_openapi_schema`
     "inbox",
 ]
 
