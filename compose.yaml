@@ -1,0 +1,21 @@
+# Running 311 with Docker Compose. Put this file next to your .env (from
+# .env.example), create the data folder as your own user (`mkdir data`; the app
+# runs as uid 1000), then: docker compose up -d
+#
+# First login:  docker compose exec app python manage.py createsuperuser
+# Backup:       docker compose exec app python manage.py backup
+# Update:       docker compose pull && docker compose up -d
+services:
+  app:
+    image: ghcr.io/jol-e/three-one-one:latest
+    container_name: three-one-one
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      # This computer only. The internet reaches it through your proxy or
+      # tunnel, which must speak https (see BASE_URL in .env.example).
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - ./data:/data # the database, and backups/ unless BACKUP_DIR says otherwise
+    logging:
+      driver: local # rotates its files; Docker's default log grows forever

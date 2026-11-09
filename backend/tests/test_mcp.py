@@ -135,6 +135,20 @@ def test_django_still_serves_everything_else(client: TestClient) -> None:
     assert client.get("/api/health").json() == {"status": "ok"}
 
 
+@pytest.mark.parametrize(
+    "headers",
+    [{"Host": "attacker.example"}, {"Origin": "https://attacker.example"}],
+    ids=["foreign-host", "foreign-origin"],
+)
+def test_requests_for_another_site_are_refused(client: TestClient, headers: dict[str, str]) -> None:
+    # A page whose own domain points at this server (DNS rebinding) can't use it,
+    # token or not: the SDK only answers BASE_URL's host.
+    body = {"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}}
+    base = {"Accept": "application/json, text/event-stream", "MCP-Protocol-Version": "2025-11-25"}
+    response = client.post("/mcp", json=body, headers={**base, **headers})
+    assert response.status_code in (403, 421)
+
+
 # --- reorder_items: asks the user through elicitation (2026-07-28 revision) ---
 
 ENVELOPE = {

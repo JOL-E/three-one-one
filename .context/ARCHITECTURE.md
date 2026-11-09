@@ -54,6 +54,23 @@ Only what the code can't say itself.
 - **Disconnect = delete.** Removing a connected app deletes its tokens, so
   access ends on the next request, not when the token expires.
 
+## In production
+
+```
+proxy or tunnel (https) ─▶ container :8000 ─▶ uvicorn ─▶ config/asgi.py
+                                                          ├─ /mcp   MCP SDK
+                                                          └─ rest   Django: WhiteNoise (files)
+                                                                    → views → app shell
+```
+
+- **One image, one process.** The built React app and Django's static files
+  are inside it; nothing in front needs to know about files.
+- **The proxy is trusted for two things:** "this came in over https"
+  (`X-Forwarded-Proto`) and the visitor's IP (`CLIENT_IP_HEADER`). That's safe
+  only because the app's port is bound to loopback and only the proxy reaches it.
+- **Data lives outside the image:** `DATA_DIR` (the SQLite file) and
+  `BACKUP_DIR` are mounted folders. Replacing the container loses nothing.
+
 ## Public surface
 
 `/mcp`, `/oauth/…` and `/.well-known/…` must be reachable from the internet

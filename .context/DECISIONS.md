@@ -221,6 +221,51 @@ use, plus an MCP server so every Claude can read and write the same data.
     since" can't be told honestly: rotation replaces every token. Disconnecting
     deletes the tokens; a self-registered client is deleted too.
 
+## 2026-11-08: M6 ship
+
+52. **The app serves its own files with WhiteNoise**: Django's `/static/`
+    (hashed names) and the built React app at the root, gzipped at build time.
+    Hashed files are cached for good; `index.html`, `sw.js` and the manifest
+    always revalidate, or updates never reach an installed PWA. A catch-all
+    view answers app URLs (`/inbox/3F9A`) with `index.html`, except the
+    server's own prefixes, which keep real 404s. So the image needs no web
+    server and runs the same behind any proxy. Starlette's StaticFiles (no new
+    dependency) rejected: no compression or cache rules without writing them.
+    WhiteNoise is sync-only; under ASGI Django reads each file whole first,
+    harmless at ~0.5 MB.
+53. **Image and CI.** Multi-stage Dockerfile: the frontend builds on the
+    build machine's own platform (same output everywhere, never emulated), uv
+    installs the locked packages without staying in the image, collectstatic
+    runs at build time. Runs as uid 1000, migrates on start, one uvicorn
+    process. GitHub Actions runs every check on every push. On `main`, plus
+    Mondays and on demand, it builds amd64 + arm64 (QEMU for arm64) and
+    publishes `latest` and `sha-<commit>` to GHCR. An amd64 smoke test must pass first,
+    so a broken image never becomes `latest`. The weekly build pulls fresh base
+    images: security fixes arrive without a code change. Dependabot groups
+    minor/patch updates per ecosystem, majors one by one.
+54. **Behind Cloudflare Tunnel, the tunnel points straight at the container**,
+    no nginx in between. The image already serves its files. cloudflared sends
+    `X-Forwarded-Proto` and `CF-Connecting-IP` itself, while an extra proxy has to
+    forward both by hand and buffers the streamed `/mcp` request unless told
+    otherwise. It's also exactly what a self-hoster with a tunnel runs.
+    **Updates are a manual command** (backup, keep the old image for a
+    rollback, check the new image's settings, restart, wait for healthy), not
+    an auto-updater: nothing changes while nobody is watching.
+55. **HTTPS follows from `BASE_URL`.** An `https` BASE_URL turns on secure
+    cookies, HSTS for one year (this host only: the parent domain isn't the
+    app's to decide), and trust in `X-Forwarded-Proto`. `CSRF_TRUSTED_ORIGINS`
+    is BASE_URL, so the login and "Allow" forms work even if a proxy doesn't
+    say "https". `ALLOWED_HOSTS` and the MCP SDK's DNS-rebinding guard (421 for
+    any other `Host`) come from BASE_URL too; `ALLOWED_HOSTS` in the
+    environment only adds names. One fewer setting to get wrong. uvicorn's own
+    proxy-header handling is off: what the proxy may claim is decided in
+    Django's settings only, next to `CLIENT_IP_HEADER`.
+56. **Backups: `manage.py backup`**, SQLite's backup API (a consistent copy
+    while the app writes; a file copy can be torn), integrity-checked, newest
+    7 kept in `BACKUP_DIR`. The host schedules it and ships copies off-site;
+    the image has no scheduler (one process). Plain `.sqlite3` files: restore
+    is a copy.
+
 ## Open
 
 - Copyright holder in `LICENSE`: currently the GitHub handle.

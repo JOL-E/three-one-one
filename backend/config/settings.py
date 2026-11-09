@@ -1,8 +1,10 @@
 """Django settings. Everything installation-specific comes from the environment."""
 
 import os
+import warnings
 from datetime import timedelta
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from django.core.exceptions import ImproperlyConfigured
 
@@ -16,8 +18,6 @@ if not SECRET_KEY:
         raise ImproperlyConfigured("Set SECRET_KEY (or DEBUG=1 for local development).")
     SECRET_KEY = "dev-only-insecure-key"
 
-ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
-
 # The app's public address, e.g. https://311.example.com. MCP clients see it in
 # the OAuth documents, so it can't be guessed from each request (DECISIONS #12).
 BASE_URL = os.environ.get("BASE_URL", "").rstrip("/")
@@ -26,10 +26,36 @@ if not BASE_URL:
         raise ImproperlyConfigured("Set BASE_URL (or DEBUG=1 for local development).")
     BASE_URL = "http://localhost:8000"
 MCP_URL = BASE_URL + "/mcp"  # what OAuth calls the "resource" a token is for
+PUBLIC_HOST = urlsplit(BASE_URL).netloc  # "host" or "host:port", as clients send it in Host
+
+# BASE_URL's host, plus localhost for the container's health check. ALLOWED_HOSTS
+# adds others (comma-separated), e.g. the computer's LAN address in development.
+ALLOWED_HOSTS = [
+    str(urlsplit(BASE_URL).hostname),
+    "localhost",
+    "127.0.0.1",
+    *[h for h in os.environ.get("ALLOWED_HOSTS", "").split(",") if h],
+]
+# Behind a proxy the browser speaks https and the app gets http. Unless the proxy
+# says so (below), a form posted from https://… looks cross-site to Django.
+# Trusting BASE_URL lets the login and "Allow" forms pass the CSRF check either way.
+CSRF_TRUSTED_ORIGINS = [BASE_URL]
+
+if BASE_URL.startswith("https://"):
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    # The proxy says "this came in over https" in this header (Cloudflare Tunnel,
+    # Caddy and nginx all can). Safe only because the app is reachable through it alone.
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    # Browsers remember for a year to use https only. This host only: the parent
+    # domain and its other subdomains aren't this app's to decide.
+    SECURE_HSTS_SECONDS = 60 * 60 * 24 * 365
 
 # Where the SQLite file lives. A Docker volume in production.
 DATA_DIR = Path(os.environ.get("DATA_DIR", BASE_DIR.parent / "data"))
 DATA_DIR.mkdir(parents=True, exist_ok=True)  # SQLite creates the file, not the folder
+# Where `manage.py backup` writes. Another volume, ideally on another disk.
+BACKUP_DIR = Path(os.environ.get("BACKUP_DIR", DATA_DIR / "backups"))
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -37,6 +63,7 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
+    "whitenoise.runserver_nostatic",  # one way to serve static files, in development too
     "django.contrib.staticfiles",
     "ninja",  # for its docs page and `manage.py export_openapi_schema`
     "axes",
@@ -47,6 +74,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",  # the built app and /static/, see below
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -92,7 +120,36 @@ TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
 
+# --- Static files and the built app (DECISIONS #52) ------------------------------
+# WhiteNoise serves both from inside the app, so the image needs no web server.
+# /static/: Django's own files (login page, admin), gathered by collectstatic.
+# Everything else that is a file: the React app built by Vite (frontend/dist).
+
 STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    # Adds a content hash to each file name and gzip/brotli copies.
+    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
+}
+FRONTEND_DIR = Path(os.environ.get("FRONTEND_DIR", BASE_DIR.parent / "frontend" / "dist"))
+WHITENOISE_ROOT = FRONTEND_DIR if FRONTEND_DIR.is_dir() else None
+WHITENOISE_INDEX_FILE = True  # "/" → index.html
+# Files with a content hash in their name never change: browsers may keep them for good.
+# Vite's: /assets/index-DKlB7zpY.js. Django's: /static/accounts/auth.3f9a1b2c4d5e.css.
+WHITENOISE_IMMUTABLE_FILE_TEST = r"^/(assets/.+-[\w-]{8}\.\w+|static/.+\.[0-9a-f]{12}\.\w+)$"
+
+
+def _always_revalidate(headers: dict[str, str], path: str, url: str) -> None:
+    """The app shell and service worker must never be stale, or updates never arrive."""
+    if url in ("/", "/index.html", "/sw.js", "/registerSW.js", "/manifest.webmanifest"):
+        headers["Cache-Control"] = "no-cache"
+
+
+WHITENOISE_ADD_HEADERS_FUNCTION = _always_revalidate
+# WhiteNoise is sync-only, so under ASGI Django reads each file whole before
+# sending it, and warns every time. Harmless here: the largest file is ~0.5 MB.
+warnings.filterwarnings("ignore", message="StreamingHttpResponse must consume synchronous iterators")
 
 # --- Login (DECISIONS #47, #48) -------------------------------------------------
 
@@ -166,7 +223,14 @@ OAUTH2_PROVIDER = {
     "COMPLIANT_BCP_RFC9700_PKCE_REQUIRED": True,
 }
 # "http redirect URIs are allowed": only to this computer, see accounts.oauth.Validator.
-SILENCED_SYSTEM_CHECKS = ["oauth2_provider.W008"]
+SILENCED_SYSTEM_CHECKS = [
+    "oauth2_provider.W008",
+    # `check --deploy`: redirecting http to https is the proxy's job; the app only
+    # ever sees http. HSTS covers this host only, never the parent domain (above).
+    "security.W008",
+    "security.W005",
+    "security.W021",
+]
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

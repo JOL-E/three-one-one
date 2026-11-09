@@ -15,7 +15,7 @@ In order. Each milestone ends with something that works and that I understand.
 - **M4 UI:** React PWA. Quick capture, inbox, drag-to-sort, move to project,
   project views, item detail with activity. Native feel on iPhone and Mac. ✅
 - **M5 Auth:** login + lockout, OAuth (authorization server + metadata +
-  automatic registration), connected apps page. Then claude.ai can connect.
+  automatic registration), connected apps page. Then claude.ai can connect. ✅
 - **M6 Ship:** Docker image, CI with multi-arch builds and weekly rebuilds,
   backups, running on my Pi, connected as a custom connector in claude.ai.
   Then import the items parked in my private context repo and delete that list.

@@ -2,12 +2,13 @@ from django.contrib import admin
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.views import LogoutView
 from django.http import HttpRequest, HttpResponse
-from django.urls import include, path
+from django.urls import include, path, re_path
 from ninja import NinjaAPI
 from ninja.security import django_auth
 
 from accounts.api import router as accounts_router
 from accounts.views import Login
+from config.frontend import app_shell
 from inbox.api import router as inbox_router
 from inbox.services import NotFound, RuleViolation
 
@@ -37,4 +38,7 @@ urlpatterns = [
     path("", include("accounts.oauth_urls")),  # /.well-known/… and /oauth/…
     path("admin/", admin.site.urls),
     path("api/", api.urls),
+    # Last: any other path is a screen of the app. The server's own prefixes stay
+    # out, so a wrong /api/ or /oauth/ URL gets a real 404, not the app.
+    re_path(r"^(?!(?:api|admin|static|oauth|login|logout|mcp|\.well-known)(?:/|$)).*$", app_shell),
 ]

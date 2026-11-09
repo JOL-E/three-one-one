@@ -1,0 +1,13 @@
+# Allowlist: only the code goes into the build, never .env, data or .git.
+*
+!backend/
+!frontend/
+
+backend/.venv
+backend/staticfiles
+**/__pycache__
+**/.*_cache
+**/*.sqlite3*
+**/.env
+frontend/node_modules
+frontend/dist

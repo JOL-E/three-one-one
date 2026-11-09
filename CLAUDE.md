@@ -64,7 +64,10 @@ From `frontend/` (with the backend running on :8000):
 
 ## Deploy
 
-One Docker image for every installation. Not deployed yet.
+One Docker image for every installation (`Dockerfile`, example `compose.yaml`).
+CI (`.github/workflows/ci.yml`) checks every push and publishes the image to
+GHCR from `main` and weekly. Local build: `docker build -t three-one-one .`
+The runbook for my own installation lives in my private context repo, not here.
 
 ## Rules for this project
 

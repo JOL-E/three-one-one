@@ -9,6 +9,7 @@ dependencies = [
     "django-oauth-toolkit>=3.4.1",
     "mcp>=2.3.0",
     "uvicorn>=0.54.0",
+    "whitenoise>=6.12.0",
 ]
 
 [dependency-groups]
@@ -27,6 +28,8 @@ DJANGO_SETTINGS_MODULE = "config.test_settings"
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
+# staticfiles/ exists only after collectstatic (in the image); tests don't need it.
+filterwarnings = ["ignore:No directory at:UserWarning"]
 
 [tool.ruff]
 line-length = 110
