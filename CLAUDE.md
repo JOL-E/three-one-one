@@ -84,8 +84,11 @@ The runbook for my own installation lives in my private context repo, not here.
 - `.context/DECISIONS.md`: every non-trivial decision, dated, with its why.
 - `.context/ARCHITECTURE.md`: what the code can't say itself.
 - `.context/STYLE_GUIDE.md`: the UI's look and native-feel requirements.
+- To-dos and ideas: in my own 311 installation (project "311", via its MCP
+  tools), not in markdown.
 
 ## End of session
 
-Update `.context/STATE.md` (and DECISIONS if something was decided), then
-suggest a commit message and the commands. Don't commit.
+Update `.context/STATE.md` (and DECISIONS if something was decided), add new
+to-dos to 311 and mark finished ones done there, then suggest a commit message
+and the commands. Don't commit.

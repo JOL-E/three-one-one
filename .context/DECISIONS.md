@@ -281,5 +281,6 @@ use, plus an MCP server so every Claude can read and write the same data.
 ## Open
 
 - Copyright holder in `LICENSE`: currently the GitHub handle.
-- Whether to-dos from my other projects move into 311 once it works.
+- Whether to-dos from my other projects move into 311 once it works: yes for
+  311 itself and the first of the others (2026-11-09); the rest one by one.
 - Can items be added to or moved into an Archived project? Allowed for now.
