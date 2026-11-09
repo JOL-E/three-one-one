@@ -20,7 +20,7 @@ export function SearchScreen() {
   );
 }
 
-/** Words in the title, across the inbox and every project. The query lives in the URL,
+/** Words in the title or the start of an id, across the inbox and every project. The query lives in the URL,
  *  so going into an item and back keeps it. */
 function SearchList({ selectedId }: { selectedId?: string }) {
   const [params, setParams] = useSearchParams();
@@ -48,13 +48,13 @@ function SearchList({ selectedId }: { selectedId?: string }) {
           type="search"
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Words in the title"
+          placeholder="Words in the title, or an id"
           autoComplete="off"
           className="border-rule bg-surface text-text focus:border-accent h-12 w-full border-2 px-3.5 text-[17px] outline-none"
         />
       </div>
       {!q ? null : results.data?.length === 0 ? (
-        <Empty>No item has all of these words in its title.</Empty>
+        <Empty>No title has all of these words, and no id starts with them.</Empty>
       ) : (
         <ul className="m-0 list-none p-0">
           {(results.data ?? []).map((hit) => (

@@ -8,8 +8,8 @@ import { GripIcon } from "../components/icons";
 import { ItemRow } from "../components/ItemRow";
 import { ListDetail } from "../components/ListDetail";
 import { ProjectSheet } from "../components/sheets";
-import { Button, Empty, ScreenHeader, SkeletonRows, Stamp } from "../components/ui";
-import { day, rank } from "../lib/format";
+import { Button, Empty, ScreenHeader, ShortId, SkeletonRows, Stamp } from "../components/ui";
+import { day } from "../lib/format";
 import { useEdgeSwipeBack, useGoBack } from "../lib/navigation";
 import { useIsDesktop } from "../lib/useMediaQuery";
 
@@ -155,11 +155,10 @@ function RankedList({
       onReorder={setOrder}
       className="border-hairline m-0 list-none border-t p-0"
     >
-      {order.map((item, n) => (
+      {order.map((item) => (
         <RankedRow
           key={item.id}
           item={item}
-          n={n}
           to={`/p/${project.id}/${item.id}`}
           selected={item.id === selectedId}
           onDrop={commit}
@@ -171,13 +170,11 @@ function RankedList({
 
 function RankedRow({
   item,
-  n,
   to,
   selected,
   onDrop,
 }: {
   item: Item;
-  n: number;
   to: string;
   selected: boolean;
   onDrop: () => void;
@@ -194,7 +191,7 @@ function RankedRow({
         selected ? "outline-text outline-2 -outline-offset-2" : ""
       }`}
     >
-      <span className="text-muted w-5 font-mono text-[13px]">{rank(n)}</span>
+      <ShortId id={item.short_id} className="shrink-0" />
       <Link
         to={to}
         className={`min-w-0 flex-1 truncate text-[16px] ${item.status === "doing" ? "font-semibold" : ""}`}

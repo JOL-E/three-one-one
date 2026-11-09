@@ -10,7 +10,7 @@ M6 done: 311 runs on my Pi and is in daily use. CI publishes the image
 (amd64 + arm64) on every push to `main` and weekly; the Pi updates with its
 deploy command (runbook in my private context repo). claude.ai and Claude Code are
 connected. claude.ai only connected after DECISIONS #57 (its CIMD document
-lists two grant types, which DOT refused). 137 backend tests.
+lists two grant types, which DOT refused). 140 backend tests.
 
 The parked items are imported. To-dos for 311 itself are items in 311,
 project 311, not here.

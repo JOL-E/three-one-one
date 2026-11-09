@@ -232,17 +232,30 @@ def list_project_items(project_id: UUID) -> list[Item]:
     return [*_ranked(project.id), *done]
 
 
+SEARCH_ID_MIN = 2
+
+
 def search_items(query: str, include_done: bool = False) -> list[Item]:
-    """Items in the inbox and every project whose title contains all the words, newest first."""
+    """Items in the inbox and every project whose title contains all the words, newest first.
+
+    A single word that could start a short ID ("6A", "#6a62") also finds the items
+    whose ID starts with it. Those come first.
+    """
     words = query.split()
     if not words:
         raise RuleViolation("Search needs at least one word.")
-    items = Item.objects.select_related("project")
-    for word in words:
-        items = items.filter(title__icontains=word)
+    items = Item.objects.select_related("project").order_by("-created_at")
     if not include_done:
         items = items.exclude(status=ItemStatus.DONE)
-    return list(items.order_by("-created_at"))
+    by_id: list[Item] = []
+    key = words[0].lstrip("#").lower()
+    if len(words) == 1 and len(key) >= SEARCH_ID_MIN and all(c in "0123456789abcdef" for c in key):
+        by_id = list(items.filter(id__istartswith=key))
+    by_title = items
+    for word in words:
+        by_title = by_title.filter(title__icontains=word)
+    seen = {i.id for i in by_id}
+    return [*by_id, *(i for i in by_title if i.id not in seen)]
 
 
 @transaction.atomic

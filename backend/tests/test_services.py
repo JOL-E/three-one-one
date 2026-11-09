@@ -145,6 +145,27 @@ def test_search_skips_done_unless_asked(project: Project) -> None:
     assert len(services.search_items("synthetic", include_done=True)) == 1
 
 
+def test_search_finds_items_by_the_start_of_their_id() -> None:
+    hit = services.add_item("First", item_id=uuid.UUID("6a62" + "0" * 28))
+    services.add_item("Second", item_id=uuid.UUID("6b00" + "0" * 28))
+    assert titles(services.search_items("6A")) == ["First"]
+    assert titles(services.search_items("#6a62")) == ["First"]
+    assert services.search_items("6A")[0].id == hit.id
+
+
+def test_search_lists_id_hits_before_title_hits() -> None:
+    services.add_item("Notes on cafe culture", item_id=uuid.UUID("1" * 32))
+    services.add_item("Older idea", item_id=uuid.UUID("cafe" + "0" * 28))
+    assert titles(services.search_items("cafe")) == ["Older idea", "Notes on cafe culture"]
+
+
+def test_search_by_id_needs_one_word_of_two_hex_characters() -> None:
+    services.add_item("Synthetic", item_id=uuid.UUID("6a62" + "0" * 28))
+    assert services.search_items("6") == []
+    assert services.search_items("6a synthetic") == []
+    assert services.search_items("6g") == []
+
+
 def test_search_needs_a_word() -> None:
     with pytest.raises(RuleViolation, match="at least one word"):
         services.search_items("  ")

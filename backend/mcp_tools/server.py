@@ -210,7 +210,10 @@ async def list_items(
     project_id: Annotated[UUID | None, Field(description="Omit to list the inbox.")] = None,
     search: Annotated[
         str | None,
-        Field(description="Words in the title. Searches the inbox and every project; project_id is ignored."),
+        Field(
+            description="Words in the title, or the start of an item id. "
+            "Searches the inbox and every project; project_id is ignored."
+        ),
     ] = None,
     include_done: bool = False,
 ) -> str:
