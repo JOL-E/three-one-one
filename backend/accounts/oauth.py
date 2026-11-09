@@ -10,6 +10,8 @@ rules are enforced by the server).
   plain-http redirects only to this computer (Claude Code's callback).
 - `Registration`: automatic client registration with a rate limit, the same
   rules, and cleanup of clients that never got a token (DECISIONS #49).
+- `MetadataFetcher`: reads a client's CIMD document, ignoring grant types this
+  server doesn't offer (DECISIONS #57).
 """
 
 import json
@@ -21,6 +23,7 @@ from django.core.cache import cache
 from django.db.models import Q
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.utils import timezone
+from oauth2_provider.cimd import SafeMetadataFetcher
 from oauth2_provider.models import (
     clear_expired,
     get_access_token_model,
@@ -73,6 +76,25 @@ class Validator(OAuth2Validator):  # type: ignore[misc]  # untyped base
         so the same rule applies here. None makes oauthlib refuse the request."""
         uri = super().get_default_redirect_uri(client_id, request, *args, **kwargs)
         return uri if isinstance(uri, str) and redirect_allowed(uri) else None
+
+
+class MetadataFetcher(SafeMetadataFetcher):  # type: ignore[misc]  # untyped base
+    """DOT's safe fetcher (no internal addresses, size and time limits), but it
+    drops grant types this server doesn't offer before DOT validates the document.
+
+    DOT stores one grant type per client and refuses a document that lists two
+    besides refresh_token. claude.ai's lists authorization_code and jwt-bearer,
+    which we don't offer; a server may ignore those (RFC 7591, section 2).
+    A document left with no usable grant type is still refused by DOT.
+    Delete this once DOT handles such documents itself.
+    """
+
+    def fetch(self, client_id: str) -> tuple[Any, int]:
+        metadata, max_age = super().fetch(client_id)
+        grant_types = metadata.get("grant_types")
+        if isinstance(grant_types, list) and all(isinstance(g, str) for g in grant_types):
+            metadata["grant_types"] = [g for g in grant_types if g in GRANT_TYPES]
+        return metadata, max_age
 
 
 def prune_unused_clients() -> int:

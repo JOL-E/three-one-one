@@ -199,6 +199,7 @@ OAUTH2_PROVIDER = {
     "DCR_ENABLED": True,
     "DCR_REGISTRATION_PERMISSION_CLASSES": ("oauth2_provider.dcr.AllowAllDCRPermission",),
     "CIMD_ENABLED": True,
+    "CIMD_METADATA_FETCHER": "accounts.oauth.MetadataFetcher",  # DECISIONS #57
     # Claude Code's callback is http://localhost:<any port>/callback. "http" can't be
     # limited to loopback here; accounts.oauth.Validator refuses every other http URL.
     "ALLOWED_REDIRECT_URI_SCHEMES": ["https", "http"],

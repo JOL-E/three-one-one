@@ -266,6 +266,18 @@ use, plus an MCP server so every Claude can read and write the same data.
     the image has no scheduler (one process). Plain `.sqlite3` files: restore
     is a copy.
 
+## 2026-11-09: First deploy
+
+57. **CIMD documents: grant types we don't offer are ignored.** claude.ai's
+    document lists `authorization_code` and `jwt-bearer`; DOT 3.4.1 keeps one
+    grant type per client and refused it ("Invalid client_id"). Claude Code's
+    lists one, so only claude.ai failed, and only on the first real deploy:
+    claude.ai can't reach a dev machine. A small subclass of DOT's safe fetcher
+    (`CIMD_METADATA_FETCHER`) drops what the server doesn't offer before DOT
+    validates; RFC 7591 allows that, and a document with no code flow left is
+    still refused. Over turning CIMD off (Claude Code only does CIMD) or
+    waiting for DOT. Delete it once DOT handles such documents.
+
 ## Open
 
 - Copyright holder in `LICENSE`: currently the GitHub handle.

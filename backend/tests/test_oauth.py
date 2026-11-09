@@ -19,6 +19,7 @@ from django.contrib.auth.models import User
 from django.core.cache import cache
 from django.test import Client
 from django.utils import timezone
+from oauth2_provider.cimd import SafeMetadataFetcher
 from oauth2_provider.models import AccessToken, Application, RefreshToken
 from starlette.testclient import TestClient
 
@@ -184,6 +185,47 @@ def test_registration_is_rate_limited_per_ip() -> None:
         assert register(c).status_code == 201
     assert register(c).status_code == 429
     assert register(Client(REMOTE_ADDR="198.51.100.2")).status_code == 201
+
+
+# A CIMD client: its client_id is the URL of its metadata document (DECISIONS #57).
+CIMD_ID = "https://client.example/oauth/metadata"
+CIMD_CALLBACK = "https://client.example/auth_callback"
+
+
+def serve_cimd(monkeypatch: pytest.MonkeyPatch, grant_types: list[str]) -> None:
+    """Answer the document fetch without the network; DOT's checks still run."""
+    document = {
+        "client_id": CIMD_ID,
+        "client_name": "Synthetic CIMD client",
+        "redirect_uris": [CIMD_CALLBACK],
+        "grant_types": grant_types,
+        "response_types": ["code"],
+        "token_endpoint_auth_method": "none",
+    }
+    monkeypatch.setattr(SafeMetadataFetcher, "fetch", lambda self, client_id: (document, 3600))
+
+
+def test_cimd_client_listing_a_grant_type_we_dont_offer_can_connect(
+    owner: User, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Shaped like claude.ai's document: plain DOT refuses it ("Invalid client_id").
+    jwt_bearer = "urn:ietf:params:oauth:grant-type:jwt-bearer"
+    serve_cimd(monkeypatch, ["authorization_code", "refresh_token", jwt_bearer])
+    c = Client()
+    c.force_login(owner)
+    assert "code" in allow(c, CIMD_ID, pkce()[1], CIMD_CALLBACK)
+    app = Application.objects.get(client_id=CIMD_ID)
+    assert app.authorization_grant_type == Application.GRANT_AUTHORIZATION_CODE
+
+
+def test_cimd_client_without_the_code_flow_is_refused(owner: User, monkeypatch: pytest.MonkeyPatch) -> None:
+    serve_cimd(monkeypatch, ["urn:ietf:params:oauth:grant-type:jwt-bearer"])
+    c = Client()
+    c.force_login(owner)
+    page = c.get(authorize_url(CIMD_ID, pkce()[1], CIMD_CALLBACK))
+    assert page.status_code == 400
+    assert b"Invalid client_id" in page.content
+    assert not Application.objects.filter(client_id=CIMD_ID).exists()
 
 
 def test_unused_clients_are_pruned_after_a_day(owner: User) -> None:
