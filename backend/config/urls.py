@@ -1,10 +1,13 @@
 from django.contrib import admin
 from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib.auth.views import LogoutView
 from django.http import HttpRequest, HttpResponse
-from django.urls import path
+from django.urls import include, path
 from ninja import NinjaAPI
 from ninja.security import django_auth
 
+from accounts.api import router as accounts_router
+from accounts.views import Login
 from inbox.api import router as inbox_router
 from inbox.services import NotFound, RuleViolation
 
@@ -26,8 +29,12 @@ def health(request: HttpRequest) -> dict[str, str]:
 
 
 api.add_router("/", inbox_router)
+api.add_router("/", accounts_router)
 
 urlpatterns = [
+    path("login/", Login.as_view(), name="login"),
+    path("logout/", LogoutView.as_view(), name="logout"),  # POST only
+    path("", include("accounts.oauth_urls")),  # /.well-known/… and /oauth/…
     path("admin/", admin.site.urls),
     path("api/", api.urls),
 ]

@@ -41,7 +41,7 @@ describe("App", () => {
     renderApp();
     expect(await screen.findByRole("link", { name: "Log in" })).toHaveAttribute(
       "href",
-      "/admin/login/?next=/",
+      "/login/?next=%2F",
     );
   });
 
@@ -70,5 +70,34 @@ describe("App", () => {
     expect(await screen.findByText("A new synthetic idea")).toBeInTheDocument();
     expect(sent.title).toBe("A new synthetic idea");
     expect(String(sent.id)).toMatch(/^[0-9a-f-]{36}$/);
+  });
+
+  it("lists connected apps and disconnects one", async () => {
+    loggedIn([]);
+    let apps = [
+      {
+        id: 7,
+        name: "Synthetic client",
+        host: "client.example",
+        last_active: "2026-11-08T12:00:00Z",
+      },
+    ];
+    mockApi("GET /api/connections", () =>
+      json(200, { mcp_url: "https://311.example.com/mcp", apps }),
+    );
+    mockApi("GET /api/auth/csrf", () => new Response(null, { status: 204 }));
+    let deleted = "";
+    mockApi("DELETE /api/connections/7", (request) => {
+      deleted = new URL(request.url).pathname;
+      apps = [];
+      return new Response(null, { status: 204 });
+    });
+    renderApp();
+    await userEvent.click(await screen.findByRole("button", { name: /Settings/ }));
+    expect(await screen.findByText("Synthetic client")).toBeInTheDocument();
+    expect(screen.getByText("https://311.example.com/mcp")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Disconnect" }));
+    expect(await screen.findByText(/Nothing connected yet/)).toBeInTheDocument();
+    expect(deleted).toBe("/api/connections/7");
   });
 });

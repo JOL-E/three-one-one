@@ -1,0 +1,190 @@
+/* The server-rendered pages (login, lockout, OAuth consent): DECISIONS #47.
+   Same tokens as the app (frontend/src/styles.css, .context/STYLE_GUIDE.md), by hand:
+   these pages don't go through the frontend build. Keep the two in step. */
+
+@font-face {
+  font-family: "Public Sans Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url("fonts/public-sans-latin-wght-normal.woff2") format("woff2-variations");
+}
+@font-face {
+  font-family: "JetBrains Mono Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 800;
+  src: url("fonts/jetbrains-mono-latin-wght-normal.woff2") format("woff2-variations");
+}
+
+:root {
+  --ground: #141413;
+  --surface: #1e1e1c;
+  --text: #edebe4;
+  --text-2: #cfccc3;
+  --muted: #a3a199;
+  --rule: #d9d6cd;
+  --hairline: #33322e;
+  --accent: #34c17b;
+  --accent-hover: #6fd9a3;
+  --on-accent: #141413;
+  --danger-text: #f07870;
+  --sans: "Public Sans Variable", system-ui, sans-serif;
+  --mono: "JetBrains Mono Variable", ui-monospace, monospace;
+  color-scheme: dark;
+}
+:root[data-theme="light"] {
+  --ground: #f2f1ec;
+  --surface: #ffffff;
+  --text: #141414;
+  --text-2: #34342f;
+  --muted: #5e5e58;
+  --rule: #141414;
+  --hairline: #d6d4cc;
+  --accent: #0b7a4b;
+  --accent-hover: #08603b;
+  --on-accent: #ffffff;
+  --danger-text: #a61b1b;
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  min-height: 100%;
+}
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 17px;
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+main {
+  max-width: 420px;
+  margin: 0 auto;
+  padding: calc(env(safe-area-inset-top) + 15vh) 24px calc(env(safe-area-inset-bottom) + 32px);
+}
+.brand {
+  font-size: 56px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+h1 {
+  margin: 24px 0 8px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--rule);
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+p {
+  margin: 0 0 16px;
+  color: var(--text-2);
+}
+
+.label {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.accent {
+  color: var(--accent);
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 24px;
+}
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 2px solid var(--rule);
+  border-radius: 0;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 17px; /* >= 16px: no zoom on iOS */
+  outline: none;
+}
+input:focus {
+  border-color: var(--accent);
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+button {
+  flex: 1;
+  height: 48px;
+  padding: 0 24px;
+  border: 2px solid var(--rule);
+  border-radius: 0;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  user-select: none;
+}
+button.primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+button:active {
+  opacity: 0.6;
+}
+
+.error {
+  margin: 0;
+  color: var(--danger-text);
+}
+a {
+  color: var(--accent);
+}
+a:hover {
+  color: var(--accent-hover);
+}
+
+/* A key/value list, e.g. who is asking on the consent page. */
+dl {
+  margin: 16px 0 0;
+  border-top: 1px solid var(--hairline);
+}
+dl div {
+  display: grid;
+  grid-template-columns: 7.5em 1fr;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--hairline);
+}
+dt {
+  padding-top: 3px;
+}
+dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}

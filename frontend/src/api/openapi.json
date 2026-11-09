@@ -734,6 +734,63 @@
           }
         ]
       }
+    },
+    "/api/connections": {
+      "get": {
+        "operationId": "accounts_api_list_connections",
+        "summary": "List Connections",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionsOut"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "accounts"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/connections/{app_id}": {
+      "delete": {
+        "operationId": "accounts_api_disconnect",
+        "summary": "Disconnect",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "app_id",
+            "schema": {
+              "title": "App Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "accounts"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -1393,6 +1450,56 @@
           "text"
         ],
         "title": "CommentIn",
+        "type": "object"
+      },
+      "ConnectionOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "host": {
+            "title": "Host",
+            "type": "string"
+          },
+          "last_active": {
+            "format": "date-time",
+            "title": "Last Active",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "host",
+          "last_active"
+        ],
+        "title": "ConnectionOut",
+        "type": "object"
+      },
+      "ConnectionsOut": {
+        "properties": {
+          "mcp_url": {
+            "title": "Mcp Url",
+            "type": "string"
+          },
+          "apps": {
+            "items": {
+              "$ref": "#/components/schemas/ConnectionOut"
+            },
+            "title": "Apps",
+            "type": "array"
+          }
+        },
+        "required": [
+          "mcp_url",
+          "apps"
+        ],
+        "title": "ConnectionsOut",
         "type": "object"
       }
     },

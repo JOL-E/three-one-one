@@ -38,7 +38,17 @@ export default defineConfig({
       },
       workbox: {
         // The app shell works offline; data always comes from the network.
-        navigateFallbackDenylist: [/^\/api\//, /^\/admin\//, /^\/mcp/, /^\/static\//],
+        // Server pages and endpoints: let these reach Django instead of the app shell.
+        navigateFallbackDenylist: [
+          /^\/api\//,
+          /^\/admin\//,
+          /^\/mcp/,
+          /^\/static\//,
+          /^\/login\//,
+          /^\/logout\//,
+          /^\/oauth\//,
+          /^\/\.well-known\//,
+        ],
       },
     }),
   ],
@@ -49,6 +59,10 @@ export default defineConfig({
       "/api": { target: django, changeOrigin: false },
       "/admin": { target: django, changeOrigin: false },
       "/static": { target: django, changeOrigin: false },
+      "/login": { target: django, changeOrigin: false },
+      "/logout": { target: django, changeOrigin: false },
+      "/oauth": { target: django, changeOrigin: false },
+      "/.well-known": { target: django, changeOrigin: false },
     },
   },
   test: {

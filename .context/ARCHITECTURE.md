@@ -34,6 +34,26 @@ Only what the code can't say itself.
 - **The rules stay on the server.** The app asks "why?" before a status change
   because the server would refuse it otherwise, not instead of the server.
 
+## Who gets in
+
+- **Two credentials, never mixed.** The app uses Django's session cookie (+
+  CSRF). `/mcp` accepts only a bearer token; a session cookie there does
+  nothing, and a token does nothing on `/api/`.
+- **Django is the authorization server, the MCP SDK only checks tokens.**
+  django-oauth-toolkit owns registration, login + consent, tokens and the
+  discovery documents. The SDK asks `mcp_tools/auth.py` "is this token valid?",
+  which looks it up in DOT's tables. Tokens are stored as hashes.
+- **A client finds everything from one 401.** `/mcp` without a token answers
+  401 with a link to `/.well-known/oauth-protected-resource/mcp`, which names
+  this server as the authorization server; its metadata lists the endpoints.
+  The client then registers itself (DCR, or a URL to its own metadata: CIMD),
+  sends me to `/oauth/authorize/`, and swaps the code for tokens.
+- **One login lock.** The login page and the admin go through django-axes. The
+  client IP comes from `CLIENT_IP_HEADER` because behind a tunnel every request
+  comes from the tunnel.
+- **Disconnect = delete.** Removing a connected app deletes its tokens, so
+  access ends on the next request, not when the token expires.
+
 ## Public surface
 
 `/mcp`, `/oauth/…` and `/.well-known/…` must be reachable from the internet

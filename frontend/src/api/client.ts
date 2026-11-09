@@ -31,6 +31,22 @@ export async function ensureCsrfCookie(): Promise<void> {
   if (!csrfToken()) await api.GET("/api/auth/csrf");
 }
 
+/** End the session and go to the login page. Logout is a server page (DECISIONS #47)
+ *  that only takes POST, with the CSRF token like any other write. Throws if the
+ *  session may still be alive: the login page would send us straight back in. */
+export async function logOut(): Promise<void> {
+  await ensureCsrfCookie();
+  const res = await fetch("/logout/", {
+    method: "POST",
+    headers: { "X-CSRFToken": csrfToken() },
+    credentials: "same-origin",
+    redirect: "manual", // the server answers with a redirect; we navigate ourselves
+  });
+  // With redirect: "manual", the redirect arrives as an empty "opaqueredirect" response.
+  if (res.type !== "opaqueredirect" && !res.ok) throw new Error(`Logout failed (${res.status})`);
+  window.location.assign("/login/");
+}
+
 export class ApiError extends Error {
   readonly status: number;
 

@@ -1,9 +1,12 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router";
 
+import { logOut } from "../api/client";
 import {
+  useConnections,
   useCreateProject,
   useDeleteItem,
+  useDisconnect,
   useDeleteProject,
   useMoveItem,
   useProjects,
@@ -15,6 +18,8 @@ import {
 import type { Item, ItemStatus, Project, ProjectState } from "../api/types";
 import { setPref, useThemePref, type ThemePref } from "../lib/theme";
 import { byGroup } from "../lib/projects";
+import { ago } from "../lib/format";
+import { toast } from "../lib/toast";
 import { Sheet } from "./Sheet";
 import { Button, Field, ShortId } from "./ui";
 
@@ -293,6 +298,75 @@ export function SettingsSheet({ isOpen, onClose }: { isOpen: boolean; onClose: (
           ))}
         </div>
       </div>
+      <ConnectedApps enabled={isOpen} />
+      <div className="border-hairline mt-6 border-t pt-4">
+        <Button onClick={() => void logOut().catch(() => toast("Couldn't log out. Try again."))}>
+          Log out
+        </Button>
+      </div>
     </Sheet>
+  );
+}
+
+/** The MCP clients with access to 311 (DECISIONS #11), and the address to add a new one. */
+function ConnectedApps({ enabled }: { enabled: boolean }) {
+  const connections = useConnections(enabled);
+  const disconnect = useDisconnect();
+  const data = connections.data;
+
+  async function copy(url: string) {
+    try {
+      await navigator.clipboard.writeText(url);
+      toast("Copied");
+    } catch {
+      toast("Couldn't copy. Select the address instead.");
+    }
+  }
+
+  return (
+    <div className="mt-6 flex flex-col gap-2">
+      <span className="label text-muted">Connected apps</span>
+      {data ? (
+        <>
+          {data.apps.length === 0 ? (
+            <p className="text-text-2 m-0 text-[15px]">
+              Nothing connected yet. Add 311 in Claude as a connector with this address:
+            </p>
+          ) : (
+            <ul className="border-hairline m-0 list-none border-t p-0">
+              {data.apps.map((app) => (
+                <li key={app.id} className="border-hairline flex items-center gap-3 border-b py-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-[17px] font-medium">{app.name}</div>
+                    <div className="label text-muted truncate">
+                      {app.host} · active {ago(app.last_active)}
+                    </div>
+                  </div>
+                  <Button
+                    tone="danger"
+                    disabled={disconnect.isPending}
+                    onClick={() =>
+                      disconnect.mutate(app, { onSuccess: () => toast(`${app.name} disconnected`) })
+                    }
+                  >
+                    Disconnect
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="flex items-center gap-2">
+            <code className="label text-text min-w-0 flex-1 truncate normal-case select-all">
+              {data.mcp_url}
+            </code>
+            <Button onClick={() => void copy(data.mcp_url)}>Copy</Button>
+          </div>
+        </>
+      ) : connections.isError ? (
+        <p className="text-muted m-0 text-[15px]">Can't load connected apps right now.</p>
+      ) : (
+        <div className="bg-surface animate-shimmer h-11" />
+      )}
+    </div>
   );
 }

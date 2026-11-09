@@ -1,0 +1,22 @@
+{% extends "accounts/base.html" %}
+{% block title %}Log in · 311{% endblock %}
+{% block content %}
+  <h1>Log in</h1>
+  <form method="post" action="{% url 'login' %}">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ next }}" />
+    {% if form.non_field_errors %}
+      {% for error in form.non_field_errors %}<p class="error" role="alert">{{ error }}</p>{% endfor %}
+    {% endif %}
+    <label>
+      <span class="label">Username</span>
+      <input name="username" value="{{ form.username.value|default_if_none:'' }}" autocomplete="username"
+             autocapitalize="none" autocorrect="off" spellcheck="false" required autofocus />
+    </label>
+    <label>
+      <span class="label">Password</span>
+      <input name="password" type="password" autocomplete="current-password" required />
+    </label>
+    <div class="actions"><button class="primary" type="submit">Log in</button></div>
+  </form>
+{% endblock %}

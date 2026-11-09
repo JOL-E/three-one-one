@@ -12,7 +12,10 @@ from inbox.models import Item, Project
 
 # transaction=True: the MCP app runs the services in another thread, which must see
 # committed data. serialized_rollback restores the General project after the flush.
-pytestmark = pytest.mark.django_db(transaction=True, serialized_rollback=True)
+pytestmark = [
+    pytest.mark.django_db(transaction=True, serialized_rollback=True),
+    pytest.mark.usefixtures("bearer"),  # /mcp needs a token (tests/test_oauth.py)
+]
 
 TOOLS = {
     "list_projects",

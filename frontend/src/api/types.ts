@@ -9,3 +9,5 @@ export type ItemStatus = Item["status"];
 export type ItemDetail = S["ItemDetail"];
 export type Activity = S["ActivityOut"];
 export type SearchHit = S["SearchHit"];
+export type Connections = S["ConnectionsOut"];
+export type Connection = S["ConnectionOut"];

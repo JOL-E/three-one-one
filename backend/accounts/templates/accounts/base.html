@@ -1,0 +1,35 @@
+{% load static %}<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#141413" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="robots" content="noindex" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <script>
+      // The app's theme setting, kept per device (DECISIONS #45). Same as frontend/index.html.
+      (function () {
+        var pref = "dark";
+        try {
+          pref = localStorage.getItem("311-theme") || "dark";
+        } catch (e) {}
+        var light =
+          pref === "light" ||
+          (pref === "system" && matchMedia("(prefers-color-scheme: light)").matches);
+        if (light) {
+          document.documentElement.dataset.theme = "light";
+          document.querySelector('meta[name="theme-color"]').content = "#F2F1EC";
+        }
+      })();
+    </script>
+    <link rel="stylesheet" href="{% static 'accounts/auth.css' %}" />
+    <title>{% block title %}311{% endblock %}</title>
+  </head>
+  <body>
+    <main>
+      <div class="brand">311</div>
+      {% block content %}{% endblock %}
+    </main>
+  </body>
+</html>

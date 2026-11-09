@@ -38,6 +38,8 @@ PWA (frontend), one Docker image. Python deps with `uv`.
   `/mcp` to the MCP SDK, everything else to Django)
 - `backend/inbox/`: models, `services.py` (every rule lives here), `api.py`
   (the app's API at `/api/`, session + CSRF), admin
+- `backend/accounts/`: login, logout, lockout (django-axes) and, from M5, the
+  OAuth server (django-oauth-toolkit). Server-rendered pages, own small CSS.
 - `backend/mcp_tools/`: MCP server and tools (thin), dev wire logger.
   Never name a package `mcp`: it would shadow the SDK.
 - `frontend/`: React PWA. `src/api/` (generated types + TanStack Query hooks:
@@ -49,13 +51,14 @@ PWA (frontend), one Docker image. Python deps with `uv`.
 From `backend/`:
 - Run: `DEBUG=1 uv run uvicorn config.asgi:application --reload` (prints every
   MCP message). Migrate first: `DEBUG=1 uv run python manage.py migrate`.
+  A login: `DEBUG=1 uv run python manage.py createsuperuser`.
 - Test: `uv run pytest`. Types: `uv run mypy .`. Lint: `uv run ruff check .`
 - Connect Claude Code: `claude mcp add --transport http 311-dev http://localhost:8000/mcp`
 - MCP SDK is v2 (`MCPServer`, not `FastMCP`); check the installed source, not v1 docs.
 
 From `frontend/` (with the backend running on :8000):
-- Run: `npm run dev` (http://localhost:5173, forwards `/api` and `/admin`).
-  Log in at `/admin/` with a superuser until M5.
+- Run: `npm run dev` (http://localhost:5173, forwards `/api`, `/admin` and the
+  server pages like `/login/`). Log in with a superuser.
 - Test: `npm test`. Types: `npm run typecheck`. Lint: `npm run lint`.
 - After changing the API: `npm run gen:api` (pre-commit checks it's current).
 

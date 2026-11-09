@@ -272,6 +272,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/connections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Connections */
+        get: operations["accounts_api_list_connections"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/connections/{app_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Disconnect */
+        delete: operations["accounts_api_disconnect"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -534,6 +568,27 @@ export interface components {
         CommentIn: {
             /** Text */
             text: string;
+        };
+        /** ConnectionOut */
+        ConnectionOut: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Host */
+            host: string;
+            /**
+             * Last Active
+             * Format: date-time
+             */
+            last_active: string;
+        };
+        /** ConnectionsOut */
+        ConnectionsOut: {
+            /** Mcp Url */
+            mcp_url: string;
+            /** Apps */
+            apps: components["schemas"]["ConnectionOut"][];
         };
     };
     responses: never;
@@ -976,6 +1031,46 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ActivityOut"];
                 };
+            };
+        };
+    };
+    accounts_api_list_connections: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectionsOut"];
+                };
+            };
+        };
+    };
+    accounts_api_disconnect: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                app_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

@@ -14,7 +14,7 @@ import {
 
 import { shortIdOf } from "../lib/format";
 import { api, ApiError, unwrap } from "./client";
-import type { Item, ItemStatus, Project, ProjectState } from "./types";
+import type { Connection, Item, ItemStatus, Project, ProjectState } from "./types";
 
 export const keys = {
   me: ["me"] as const,
@@ -23,6 +23,7 @@ export const keys = {
   projectItems: (id: string) => ["project-items", id] as const,
   item: (id: string) => ["item", id] as const,
   search: (q: string) => ["search", q] as const,
+  connections: ["connections"] as const,
 };
 
 /** After any write: refetch everything except the session. Cheap for one user. */
@@ -307,5 +308,30 @@ export function useDeleteProject() {
       );
     },
     onSettled: () => refreshAll(qc),
+  });
+}
+
+// --- Connected apps (MCP clients with access) ------------------------------------
+
+/** The MCP clients that hold a working token, and the URL to connect a new one. */
+export function useConnections(enabled = true) {
+  return useQuery({
+    queryKey: keys.connections,
+    queryFn: async () => unwrap(await api.GET("/api/connections")),
+    enabled,
+  });
+}
+
+/** Take a client's access away at once. Not optimistic: it's rare, and the list
+ *  should show what the server actually did. */
+export function useDisconnect() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (app: Connection) => {
+      unwrap(
+        await api.DELETE("/api/connections/{app_id}", { params: { path: { app_id: app.id } } }),
+      );
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: keys.connections }),
   });
 }

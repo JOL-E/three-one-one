@@ -181,6 +181,46 @@ use, plus an MCP server so every Claude can read and write the same data.
     the server: a phone and a Mac may want different ones, and it needs no
     login to apply before the first paint.
 
+## 2026-11-08: M5 auth
+
+46. **OAuth server: django-oauth-toolkit (DOT) 3.4**, as #11 planned, over the
+    MCP SDK's built-in authorization server. DOT 3.4 brings automatic
+    registration, Client ID Metadata Documents (CIMD, with a fetcher that
+    refuses internal addresses), both `.well-known` documents, resource
+    indicators and any-port `localhost` redirects; the SDK has no CIMD, and
+    storage, cleanup and admin would be ours to write. claude.ai now prefers
+    CIMD and Claude Code uses only CIMD, so that part matters. Cost: about ten
+    new packages, and Django 6.1 support is merged but not released (3.4.1
+    passed checks, migrations and a registration on 6.1.3). The SDK still
+    guards `/mcp` with its bearer check; a small verifier looks tokens up in DOT.
+47. **Login and consent are server-rendered Django pages** in the Ticket look,
+    not React screens. Django's LoginView handles safe redirects, the lockout
+    plugs straight in, and OAuth's `/authorize` redirects there anyway. The
+    app has no login API; its gate links to `/login/`. Seen rarely (long
+    sessions), so native feel matters less than a small attack surface.
+48. **Lockout: django-axes, IP + username together**, 5 failures → that pair
+    is locked for 15 minutes. Locking by username alone would let anyone lock
+    me out. Behind a proxy or tunnel every request comes from the proxy, so a
+    `CLIENT_IP_HEADER` setting names the header with the real address
+    (`CF-Connecting-IP` behind Cloudflare Tunnel). It's trusted only because
+    the app can't be reached except through that proxy.
+49. **Client registration is open, with limits.** Any MCP client may register
+    or use CIMD from any host: registering grants nothing, every connection
+    still needs my login and an "Allow". Registration is rate-limited, and
+    clients that never got a token are deleted after a day.
+
+50. **OAuth details.** One scope, `mcp`. Access tokens last 1 hour; refresh
+    tokens rotate, expire after 90 days unused, and a replayed one revokes its
+    successors (RFC 9700 reuse detection). Tokens stored hashed. "Allow" is
+    asked every time. Only the code flow with PKCE (S256): registration and the
+    token endpoint refuse other grant types, so no token exists without a
+    person. Plain-http redirects only to loopback. A token without a `resource`
+    counts as unrestricted (DOT's rule; some clients don't send one).
+51. **Connected apps live in the Settings sheet**, with the MCP address to copy.
+    Shown: name, host, "last active" (when it last got a token). "Connected
+    since" can't be told honestly: rotation replaces every token. Disconnecting
+    deletes the tokens; a self-registered client is deleted too.
+
 ## Open
 
 - Copyright holder in `LICENSE`: currently the GitHub handle.

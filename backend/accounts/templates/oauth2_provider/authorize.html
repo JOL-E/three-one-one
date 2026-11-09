@@ -1,0 +1,35 @@
+{% extends "accounts/base.html" %}
+{% load oauth %}
+{% comment %}
+  The "Allow?" page of the OAuth flow (DECISIONS #47). Replaces DOT's own template.
+  The app's name comes from the client and can be anything; the address the answer
+  goes back to is what identifies it, so it's shown prominently (MCP spec).
+{% endcomment %}
+{% block title %}Connect · 311{% endblock %}
+{% block content %}
+  {% if error %}
+    <h1>Can't connect</h1>
+    <p>{{ error.description|default:error.error }}</p>
+  {% else %}
+    <h1>Connect {{ application.name|default:"an app" }}?</h1>
+    <p>It will be able to read and change your projects and items. It can't delete
+      anything or change a project's state.</p>
+    <dl>
+      <div><dt class="label">App</dt><dd>{{ application.name|default:"(no name given)" }}</dd></div>
+      <div><dt class="label">Returns to</dt><dd class="accent">{{ redirect_uri|host }}</dd></div>
+    </dl>
+    {% if redirect_uri|loopback %}
+      <p style="margin-top: 16px">This app runs on this computer. Only allow it if you just started
+        connecting it yourself, for example from Claude Code.</p>
+    {% endif %}
+    <form method="post">
+      {% csrf_token %}
+      {% for field in form %}{% if field.is_hidden %}{{ field }}{% endif %}{% endfor %}
+      {% for error in form.non_field_errors %}<p class="error" role="alert">{{ error }}</p>{% endfor %}
+      <div class="actions">
+        <button type="submit">Cancel</button>
+        <button class="primary" type="submit" name="allow" value="on">Allow</button>
+      </div>
+    </form>
+  {% endif %}
+{% endblock %}

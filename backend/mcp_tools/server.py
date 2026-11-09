@@ -15,15 +15,18 @@ from typing import Annotated, Any, Literal
 from uuid import UUID
 
 from asgiref.sync import sync_to_async
+from django.conf import settings
+from mcp.server.auth.settings import AuthSettings
 from mcp.server.elicitation import AcceptedElicitation, ElicitationResult
 from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 from mcp.server.mcpserver.resolve import Elicit, Resolve
 from mcp_types import Tool, ToolAnnotations
-from pydantic import BaseModel, Field, TypeAdapter
+from pydantic import AnyHttpUrl, BaseModel, Field, TypeAdapter
 
 from inbox import services
 from inbox.models import Activity, Author, Item, ItemStatus, Project
+from mcp_tools.auth import SCOPE, TokenCheck
 
 INSTRUCTIONS = """\
 311 is the user's inbox for side-project ideas and the work on them.
@@ -62,7 +65,19 @@ class Server(MCPServer):
         return [t.model_copy(update={"input_schema": without_titles(t.input_schema)}) for t in tools]
 
 
-server = Server(name="311", version="0.1.0", instructions=INSTRUCTIONS)
+# Every request to /mcp needs a token with the mcp scope (mcp_tools/auth.py).
+# The SDK also offers a protected-resource document from these settings, but
+# config/asgi.py sends only /mcp to the SDK; Django serves that document
+# (accounts/oauth_urls.py), from the same BASE_URL.
+auth = AuthSettings(
+    issuer_url=AnyHttpUrl(settings.BASE_URL),
+    resource_server_url=AnyHttpUrl(settings.MCP_URL),
+    required_scopes=[SCOPE],
+    validate_token_resource=False,  # TokenCheck checks the resource itself
+)
+server = Server(
+    name="311", version="0.1.0", instructions=INSTRUCTIONS, token_verifier=TokenCheck(), auth=auth
+)
 
 ProjectId = Annotated[UUID, Field(description="A project's id, from list_projects.")]
 ItemId = Annotated[str, Field(description="An item's id, like 3F9A.")]

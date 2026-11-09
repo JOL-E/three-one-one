@@ -1,0 +1,7 @@
+{% extends "accounts/base.html" %}
+{% block title %}Locked · 311{% endblock %}
+{% block content %}
+  <h1>Too many tries</h1>
+  <p>Logging in is paused for {{ minutes }} minutes after too many wrong passwords.</p>
+  <p><a href="{% url 'login' %}">Back to log in</a></p>
+{% endblock %}
