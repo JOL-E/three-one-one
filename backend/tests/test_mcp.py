@@ -219,11 +219,23 @@ def test_reorder_declined_changes_nothing(client: TestClient, ranked: Any) -> No
     assert order(project) == ["a", "b"]
 
 
-def test_reorder_refused_when_client_cannot_ask(client: TestClient, ranked: Any) -> None:
+@pytest.mark.parametrize("capabilities", [{}, {"elicitation": {"url": {}}}], ids=["none", "url-only"])
+def test_reorder_applied_unconfirmed_when_client_cannot_ask(
+    client: TestClient, ranked: Any, capabilities: dict[str, Any]
+) -> None:
+    # DECISIONS #59: e.g. the Claude mobile app, which doesn't declare form elicitation.
     project, _ = ranked
-    error = reorder(client, reversed_args(ranked), capabilities={})["error"]
-    assert error["code"] == -32021  # missing required client capability
-    assert order(project) == ["a", "b"]
+    result = reorder(client, reversed_args(ranked), capabilities)["result"]
+    assert result["isError"] is False
+    assert "applied unconfirmed" in result["content"][0]["text"]
+    assert order(project) == ["b", "a"]
+
+
+def test_reorder_applied_unconfirmed_on_older_revision(client: TestClient, ranked: Any) -> None:
+    # 2025-11-25 would need a server-to-client request, which stateless HTTP can't send.
+    project, _ = ranked
+    assert "applied unconfirmed" in call(client, "reorder_items", **reversed_args(ranked))
+    assert order(project) == ["b", "a"]
 
 
 def test_invalid_order_refused_before_asking(client: TestClient, ranked: Any) -> None:

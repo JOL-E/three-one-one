@@ -18,10 +18,11 @@ from asgiref.sync import sync_to_async
 from django.conf import settings
 from mcp.server.auth.settings import AuthSettings
 from mcp.server.elicitation import AcceptedElicitation, ElicitationResult
-from mcp.server.mcpserver import MCPServer
+from mcp.server.mcpserver import Context, MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 from mcp.server.mcpserver.resolve import Elicit, Resolve
 from mcp_types import Tool, ToolAnnotations
+from mcp_types.version import is_version_at_least
 from pydantic import AnyHttpUrl, BaseModel, Field, TypeAdapter
 
 from inbox import services
@@ -324,24 +325,50 @@ async def update_project(
     return as_text(ProjectOut.of(project))
 
 
-# --- Reordering, confirmed by the user ---------------------------------------
+# --- Reordering, confirmed by the user where the client can ask --------------
 # DECISIONS #7: clients must ask the user before every reorder. A hint can't
 # guarantee that, so the server asks itself, through elicitation: the first call
 # returns `input_required` with a question for the user; the client shows it and
 # retries the call with the answer. No "accept", no reorder.
+# DECISIONS #59: a client that can't ask (no form elicitation, or an older
+# protocol revision, which a stateless server can't send a question on) gets
+# the order applied unconfirmed, and the result says so.
 
 
 class Confirm(BaseModel):
     """Elicitation form with no fields: accept or decline is the whole answer."""
 
 
-async def confirm_order(project_id: UUID, item_ids: list[str]) -> Elicit[Confirm]:
-    # A resolver: runs before the tool body and gets the tool's arguments by name.
-    # The list is checked before the user is asked, so they never confirm an
-    # invalid order. The SDK pins the answer to this exact message: if the list
-    # changes between rounds, the user is asked again.
+class NotAsked(BaseModel):
+    """The client can't show the question, so nobody was asked."""
+
+
+def can_ask(ctx: Context[Any, Any]) -> bool:
+    """Whether this request can carry a question for the user back to the client.
+
+    Only 2026-07-28+ (`input_required`) can: older revisions need a stream for a
+    server-to-client request, which a stateless server doesn't have (DECISIONS #20).
+    The capability test is the SDK's own: a bare `elicitation: {}` counts as form
+    support, url-only doesn't.
+    """
+    capabilities = ctx.client_capabilities
+    elicitation = capabilities.elicitation if capabilities is not None else None
+    can_form = elicitation is not None and (elicitation.form is not None or elicitation.url is None)
+    return can_form and is_version_at_least(ctx.session.protocol_version, "2026-07-28")
+
+
+async def confirm_order(
+    ctx: Context[Any, Any], project_id: UUID, item_ids: list[str]
+) -> Elicit[Confirm] | NotAsked:
+    # A resolver: runs before the tool body and gets the tool's arguments by name
+    # (and the request context by type). The list is checked before the user is
+    # asked, so they never confirm an invalid order. The SDK pins the answer to
+    # this exact message: if the list changes between rounds, the user is asked again.
     project = await run(services.get_project, project_id)
     items = await run(services.check_order, project_id, await run(_resolve_all, item_ids))
+    if not can_ask(ctx):
+        # Not a question, so the SDK hands it straight to the tool as "accepted".
+        return NotAsked()
     lines = "\n".join(f"{n}. {item.title}" for n, item in enumerate(items, 1))
     return Elicit(f"Claude wants to reorder {project.name!r} to:\n{lines}", Confirm)
 
@@ -350,16 +377,20 @@ async def confirm_order(project_id: UUID, item_ids: list[str]) -> Elicit[Confirm
 async def reorder_items(
     project_id: ProjectId,
     item_ids: Annotated[list[str], Field(description="Every open and doing item's id, top first.")],
-    confirmation: Annotated[ElicitationResult[Confirm], Resolve(confirm_order)],
+    confirmation: Annotated[ElicitationResult[Confirm | NotAsked], Resolve(confirm_order)],
 ) -> str:
     """Set a project's priority order. Call only when the user asked to reprioritize.
 
-    The user is asked to confirm before anything changes.
+    Where the app can ask, the user confirms before anything changes; elsewhere the order is applied directly.
     """
     if not isinstance(confirmation, AcceptedElicitation):
         raise ToolError(f"The user did not confirm ({confirmation.action}). The order is unchanged.")
     items = await run(services.set_order, project_id, await run(_resolve_all, item_ids))
     ids = await run(services.short_ids)
     # Claude never sees the question or the answer (client and server handle
-    # them), so the result says it happened.
-    return "The user confirmed. New order: " + as_text([ItemSummary.of(i, ids) for i in items])
+    # them), so the result says what happened.
+    if isinstance(confirmation.data, NotAsked):
+        head = "This app can't ask the user to confirm, so the order was applied unconfirmed. New order: "
+    else:
+        head = "The user confirmed. New order: "
+    return head + as_text([ItemSummary.of(i, ids) for i in items])

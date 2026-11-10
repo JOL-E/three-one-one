@@ -287,6 +287,19 @@ use, plus an MCP server so every Claude can read and write the same data.
     give it its own TypeScript 5 (a peer dependency is the project's copy).
     Dependabot ignores `typescript` >= 6 until then.
 
+## 2026-11-10: Reordering from clients that can't ask
+
+59. **A client that can't ask gets the reorder applied unconfirmed** (narrows
+    #33). The Claude mobile app speaks 2026-07-28 but doesn't declare form
+    elicitation, so it couldn't reorder at all (-32021). Clients on older
+    revisions never could: asking them needs a server-to-client request, which
+    stateless HTTP (#20) can't send. Now the confirmation is skipped for both,
+    and the result tells Claude the order was unconfirmed. Clients that can ask
+    still must. Nothing is logged in the items' activity: an order is easy to
+    see and to drag back. Over a separate `move_item`-style tool (another tool
+    in every conversation) and over "drag it in the app" (keeps the rule, but
+    the phone chat can't reprioritize).
+
 ## Open
 
 - Copyright holder in `LICENSE`: currently the GitHub handle.
