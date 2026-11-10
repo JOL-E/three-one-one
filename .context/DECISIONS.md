@@ -299,6 +299,11 @@ use, plus an MCP server so every Claude can read and write the same data.
     see and to drag back. Over a separate `move_item`-style tool (another tool
     in every conversation) and over "drag it in the app" (keeps the rule, but
     the phone chat can't reprioritize).
+60. **The reorder question names only the moves, on one line.** claude.ai
+    drops its line breaks and Claude Code shows only its first lines, so the
+    full new order hid the change. It lists the fewest moves (items outside a
+    longest increasing subsequence), at most 3 plus "and N more", titles cut
+    to 40 characters.
 
 ## Open
 

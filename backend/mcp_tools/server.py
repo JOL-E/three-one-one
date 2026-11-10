@@ -365,12 +365,28 @@ async def confirm_order(
     # asked, so they never confirm an invalid order. The SDK pins the answer to
     # this exact message: if the list changes between rounds, the user is asked again.
     project = await run(services.get_project, project_id)
-    items = await run(services.check_order, project_id, await run(_resolve_all, item_ids))
+    moves = await run(services.order_moves, project_id, await run(_resolve_all, item_ids))
     if not can_ask(ctx):
         # Not a question, so the SDK hands it straight to the tool as "accepted".
         return NotAsked()
-    lines = "\n".join(f"{n}. {item.title}" for n, item in enumerate(items, 1))
-    return Elicit(f"Claude wants to reorder {project.name!r} to:\n{lines}", Confirm)
+    ids = await run(services.short_ids)
+    return Elicit(f"Claude wants to reorder {project.name!r}: {describe(moves, ids)}", Confirm)
+
+
+def describe(moves: list[services.Move], ids: dict[UUID, str], shown: int = 3) -> str:
+    """One line (claude.ai drops line breaks, Claude Code shows only the first few)."""
+    if not moves:
+        return "the order stays the same."
+    parts = [
+        f'move #{ids[m.item.id]} "{shorten(m.item.title)}" from {m.old} to {m.new}' for m in moves[:shown]
+    ]
+    if len(moves) > shown:
+        parts.append(f"and {len(moves) - shown} more")
+    return "; ".join(parts) + "."
+
+
+def shorten(title: str, width: int = 40) -> str:
+    return title if len(title) <= width else title[: width - 1].rstrip() + "…"
 
 
 @tool(destructive=True)

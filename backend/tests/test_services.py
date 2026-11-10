@@ -318,6 +318,29 @@ def test_set_order_must_name_every_ranked_item_once(project: Project) -> None:
     assert positions(project) == {"a": 0, "b": 1}
 
 
+@pytest.mark.parametrize(
+    ("new", "moves"),
+    [
+        ("abcdef", []),
+        ("abdefc", [("c", 3, 6)]),  # one item dragged down: one move, not four shifts
+        ("abcdfe", [("e", 5, 6)]),  # a swap of neighbours is one move
+        ("fabcde", [("f", 6, 1)]),
+        ("fedcba", [("e", 5, 2), ("d", 4, 3), ("c", 3, 4), ("b", 2, 5), ("a", 1, 6)]),
+    ],
+)
+def test_order_moves_are_the_fewest(project: Project, new: str, moves: list[tuple[str, int, int]]) -> None:
+    items = {t: services.add_item(t, project_id=project.id) for t in "abcdef"}
+    result = services.order_moves(project.id, [items[t].id for t in new])
+    assert [(m.item.title, m.old, m.new) for m in result] == moves
+    assert positions(project) == {t: n for n, t in enumerate("abcdef")}  # only describes
+
+
+def test_order_moves_checks_the_order(project: Project) -> None:
+    a, _ = (services.add_item(t, project_id=project.id) for t in "ab")
+    with pytest.raises(RuleViolation, match="exactly once"):
+        services.order_moves(project.id, [a.id])
+
+
 def test_delete_item_closes_gap_and_removes_log(project: Project) -> None:
     a, _ = (services.add_item(t, project_id=project.id) for t in "ab")
     services.delete_item(a.id)

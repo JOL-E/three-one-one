@@ -9,6 +9,7 @@ Who may call what (DECISIONS #7) is decided by which door exposes a function:
 `set_project_state`, `delete_project` and `delete_item` are never MCP tools.
 """
 
+from typing import NamedTuple
 from uuid import UUID
 
 from django.core.exceptions import ValidationError
@@ -382,6 +383,38 @@ def check_order(project_id: UUID, item_ids: list[UUID]) -> list[Item]:
             f"Pass every open and doing item of {project.name!r} exactly once ({len(ranked)} items)."
         )
     return [ranked[i] for i in item_ids]
+
+
+class Move(NamedTuple):
+    item: Item
+    old: int  # 1-based position before
+    new: int  # and after
+
+
+def order_moves(project_id: UUID, item_ids: list[UUID]) -> list[Move]:
+    """The fewest moves that turn the current order into the new one, top first.
+
+    The largest group of items that keep their order relative to each other (a
+    longest increasing subsequence) stays put; every other item counts as moved.
+    So one item dragged from 3 to 6 is one move, not four shifted positions.
+    Checks the new order like `check_order`.
+    """
+    items = check_order(project_id, item_ids)
+    was = {item.id: n for n, item in enumerate(_ranked(project_id))}
+    seq = [was[item.id] for item in items]
+    # longest[k]: the longest increasing run ending at k; before[k]: its previous element.
+    # Quadratic, which is fine for a project's few dozen items.
+    longest, before = [1] * len(seq), [-1] * len(seq)
+    for k in range(len(seq)):
+        for j in range(k):
+            if seq[j] < seq[k] and longest[j] + 1 > longest[k]:
+                longest[k], before[k] = longest[j] + 1, j
+    stay = set()
+    k = max(range(len(seq)), key=longest.__getitem__, default=-1)
+    while k != -1:
+        stay.add(k)
+        k = before[k]
+    return [Move(item, was[item.id] + 1, n + 1) for n, item in enumerate(items) if n not in stay]
 
 
 @transaction.atomic

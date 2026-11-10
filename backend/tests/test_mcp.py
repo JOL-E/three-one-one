@@ -192,7 +192,7 @@ def answer(client: TestClient, args: dict[str, Any], action: str) -> dict[str, A
     first = reorder(client, args, CAN_ELICIT)["result"]
     assert first["resultType"] == "input_required"
     [(key, request)] = first["inputRequests"].items()
-    assert request["params"]["message"].endswith("1. b\n2. a")
+    assert request["params"]["message"].endswith('"a" from 1 to 2.')
     second: dict[str, Any] = reorder(
         client,
         args,
@@ -236,6 +236,20 @@ def test_reorder_applied_unconfirmed_on_older_revision(client: TestClient, ranke
     project, _ = ranked
     assert "applied unconfirmed" in call(client, "reorder_items", **reversed_args(ranked))
     assert order(project) == ["b", "a"]
+
+
+def test_reorder_question_is_one_short_line(client: TestClient) -> None:
+    # #659C: claude.ai drops line breaks and Claude Code shows only the first lines.
+    project = services.create_project("Synthetic")
+    items = [services.add_item(f"Item {n} " + "x" * 50, project_id=project.id) for n in range(6)]
+    args = {"project_id": str(project.id), "item_ids": [str(i.id) for i in reversed(items)]}
+    first = reorder(client, args, CAN_ELICIT)["result"]
+    [request] = first["inputRequests"].values()
+    message = request["params"]["message"]
+    assert "\n" not in message
+    assert message.count("move #") == 3
+    assert message.endswith("; and 2 more.")
+    assert '"Item 4 ' + "x" * 32 + '…" from 5 to 2' in message  # cut to 40 characters
 
 
 def test_invalid_order_refused_before_asking(client: TestClient, ranked: Any) -> None:
