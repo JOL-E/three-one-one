@@ -17,6 +17,10 @@ updates:
     groups:
       npm:
         update-types: [minor, patch]
+    ignore:
+      # openapi-typescript needs TypeScript 5 (DECISIONS #58).
+      - dependency-name: typescript
+        versions: [">=6"]
 
   - package-ecosystem: docker # base images in the Dockerfile
     directory: /

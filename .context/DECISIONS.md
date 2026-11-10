@@ -278,6 +278,15 @@ use, plus an MCP server so every Claude can read and write the same data.
     still refused. Over turning CIMD off (Claude Code only does CIMD) or
     waiting for DOT. Delete it once DOT handles such documents.
 
+## 2026-11-10: Dependencies
+
+58. **TypeScript stays on 5.9** until openapi-typescript supports 7.
+    openapi-typescript generates `schema.d.ts` with TypeScript's JavaScript
+    API (`ts.factory`), which TypeScript 7 (the Go compiler) doesn't ship, so
+    `gen:types` crashes; its peer range (`^5.x`) also rules out 6. npm can't
+    give it its own TypeScript 5 (a peer dependency is the project's copy).
+    Dependabot ignores `typescript` >= 6 until then.
+
 ## Open
 
 - Copyright holder in `LICENSE`: currently the GitHub handle.
