@@ -15,7 +15,7 @@ RUN npm run build
 FROM ghcr.io/astral-sh/uv:0.13.7 AS uv
 
 # 2. The server: Python, the packages, the code, the built app.
-FROM python:3.14-slim
+FROM python:3.15-slim
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     UV_COMPILE_BYTECODE=1 \
