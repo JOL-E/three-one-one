@@ -2,7 +2,7 @@
 
 _Where we are. Update at the end of every session._
 
-**Last updated:** 2026-11-09
+**Last updated:** 2026-11-10
 
 ## Now
 
@@ -17,7 +17,10 @@ project 311, not here.
 
 ## Next
 
-M7: going public (ROADMAP). Smaller work: 311, project 311, top first.
+M7: going public (ROADMAP). The history is clean (DECISIONS #61–64); next,
+move to a fresh private repository under the same name, then the self-hosting
+docs, SECURITY.md and the switch to public. Smaller work: 311, project 311,
+top first.
 
 ## Open loops
 

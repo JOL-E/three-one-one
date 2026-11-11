@@ -305,6 +305,22 @@ use, plus an MCP server so every Claude can read and write the same data.
     longest increasing subsequence), at most 3 plus "and N more", titles cut
     to 40 characters.
 
+## 2026-11-10: Going public: the history
+
+61. **The history was rewritten before going public** (`git filter-repo`):
+    the pre-commit guard only ever saw file contents, so the commit metadata
+    held a personal email address, and some files named private repos.
+62. **Commits are authored as the GitHub handle with its noreply address**,
+    not a real name. The guard now also checks the commit author and the
+    commit message against the denylist.
+63. **No names of the owner's other projects**, in files or history: they say
+    nothing to readers and point at private repos. Replaced with neutral
+    wording ("my other apps").
+64. **A fresh repository instead of flipping this one public.** GitHub keeps a
+    read-only copy of every pull request's branch, which still holds the old
+    commits after a force-push; only GitHub Support can remove them. The old
+    repository is renamed and stays private. The image name doesn't change.
+
 ## Open
 
 - Copyright holder in `LICENSE`: currently the GitHub handle.
