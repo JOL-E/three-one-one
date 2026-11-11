@@ -17,10 +17,11 @@ project 311, not here.
 
 ## Next
 
-M7: going public (ROADMAP). The history is clean (DECISIONS #61–64); next,
-move to a fresh private repository under the same name, then the self-hosting
-docs, SECURITY.md and the switch to public. Smaller work: 311, project 311,
-top first.
+M7: going public (ROADMAP). Done: clean history in a fresh private repository
+(DECISIONS #61–64), self-hosting guide `docs/self-hosting.md` (#65–66; the
+proxy notes tested locally). Next: SECURITY.md and the switch to public, then
+one literal run of the guide (311 #B468). Smaller work: 311, project 311, top
+first.
 
 ## Open loops
 

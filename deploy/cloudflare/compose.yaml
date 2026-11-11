@@ -1,0 +1,30 @@
+# 311 behind a Cloudflare Tunnel: the app, plus cloudflared, which connects out
+# to Cloudflare. No port is opened on this machine. Guide: docs/self-hosting.md
+#
+# Next to this file: your .env (from .env.example, TUNNEL_TOKEN filled in) and a
+# data folder created as your own user (`mkdir data`; the app runs as uid 1000).
+# Then: docker compose up -d
+services:
+  app:
+    image: ghcr.io/jol-e/three-one-one:latest
+    container_name: three-one-one
+    restart: unless-stopped
+    env_file: .env
+    # No ports: only cloudflared reaches the app (as http://app:8000). That's
+    # also why CF-Connecting-IP can be trusted (CLIENT_IP_HEADER in .env).
+    volumes:
+      - ./data:/data # the database, and backups/ unless BACKUP_DIR says otherwise
+    logging:
+      driver: local # rotates its files; Docker's default log grows forever
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:?set TUNNEL_TOKEN in .env}
+    depends_on:
+      app:
+        condition: service_healthy
+    logging:
+      driver: local

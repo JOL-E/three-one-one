@@ -64,7 +64,8 @@ From `frontend/` (with the backend running on :8000):
 
 ## Deploy
 
-One Docker image for every installation (`Dockerfile`, example `compose.yaml`).
+One Docker image for every installation (`Dockerfile`, example `compose.yaml`,
+`deploy/cloudflare/`). Guide for self-hosters: `docs/self-hosting.md`.
 CI (`.github/workflows/ci.yml`) checks every push and publishes the image to
 GHCR from `main` and weekly. Local build: `docker build -t three-one-one .`
 The runbook for my own installation lives in my private context repo, not here.

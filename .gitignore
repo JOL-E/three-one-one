@@ -1,5 +1,6 @@
 # OS / editors
 .DS_Store
+.*.sw?
 .idea/
 .vscode/
 

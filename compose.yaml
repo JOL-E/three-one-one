@@ -1,4 +1,8 @@
-# Running 311 with Docker Compose. Put this file next to your .env (from
+# Running 311 with Docker Compose, behind your own reverse proxy. With a
+# Cloudflare Tunnel, use deploy/cloudflare/compose.yaml instead.
+# Guide: docs/self-hosting.md
+#
+# Put this file next to your .env (from
 # .env.example), create the data folder as your own user (`mkdir data`; the app
 # runs as uid 1000), then: docker compose up -d
 #

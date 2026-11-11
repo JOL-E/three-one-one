@@ -52,8 +52,19 @@ jobs:
       - name: API types match the backend
         run: npm run -s gen:api && git diff --exit-code -- src/api
 
+  compose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: The example compose files are valid
+        run: |
+          cp .env.example .env
+          docker compose -f compose.yaml config --quiet
+          cp .env.example deploy/cloudflare/.env
+          TUNNEL_TOKEN=ci-only docker compose -f deploy/cloudflare/compose.yaml config --quiet
+
   image:
-    needs: [backend, frontend]
+    needs: [backend, frontend, compose]
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:

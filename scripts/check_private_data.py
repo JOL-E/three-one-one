@@ -54,10 +54,9 @@ def main(paths: list[str]) -> int:
             continue
         if path.name == DENYLIST.name or not path.is_file():
             continue
-        try:
-            text = path.read_text(encoding="utf-8").lower()
-        except UnicodeDecodeError:
-            continue  # binary file
+        # Binary files too: an editor's swap file holds your username and host
+        # name in plain text between the binary parts.
+        text = path.read_bytes().decode("utf-8", errors="ignore").lower()
         # Report only the line number, never the matched value (keeps it out of logs).
         for entry in denied:
             if entry in text:

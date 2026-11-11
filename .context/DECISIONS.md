@@ -321,6 +321,19 @@ use, plus an MCP server so every Claude can read and write the same data.
     commits after a force-push; only GitHub Support can remove them. The old
     repository is renamed and stays private. The image name doesn't change.
 
+## 2026-11-10: Self-hosting docs
+
+65. **One full path, Cloudflare Tunnel, plus requirements for your own proxy.**
+    claude.ai needs a public https address; a tunnel or a reverse proxy are the
+    two ways. The tunnel is the tested path (it's what the author runs).
+    Self-hosters who avoid Cloudflare mostly run a proxy already, so they get
+    what any proxy must do, with a Caddy example, instead of a second
+    step-by-step path that would need a public server to test.
+66. **In the tunnel setup, cloudflared runs in the compose file**
+    (`deploy/cloudflare/`), with a token from the dashboard: nothing to install
+    on the host, and the app publishes no port at all, so `CF-Connecting-IP`
+    can only come from the tunnel. CI checks both example compose files.
+
 ## Open
 
 - Copyright holder in `LICENSE`: currently the GitHub handle.

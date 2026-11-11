@@ -16,7 +16,13 @@ number, goes to the right place and is tracked until it's closed.
   deciding what it may do.
 - **Self-hosted, single user.** One Docker container, one SQLite file.
 
-> **Status:** early development. Not usable yet.
+> **Status:** young, in daily use by its author. Expect changes.
+
+## Run it yourself
+
+One container on any machine with Docker (a Raspberry Pi is plenty), reached
+through a Cloudflare Tunnel or your own reverse proxy. Step by step:
+[docs/self-hosting.md](docs/self-hosting.md).
 
 ## License
 
