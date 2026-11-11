@@ -334,9 +334,20 @@ use, plus an MCP server so every Claude can read and write the same data.
     on the host, and the app publishes no port at all, so `CF-Connecting-IP`
     can only come from the tunnel. CI checks both example compose files.
 
+## 2026-11-11: Going public
+
+67. **Vulnerabilities are reported through GitHub's private vulnerability
+    reporting**, not by email: no address to publish or monitor, and the report,
+    the fix and the advisory stay in one place. Only the newest image is
+    supported.
+68. **The copyright holder in `LICENSE` stays the GitHub handle**, matching the
+    commit author (#62).
+69. **`main` is protected against force-pushes and deletion only.** Changes
+    still go straight to `main` without pull requests (one maintainer, CI runs
+    on every push); rewriting the public history needs a deliberate unlock.
+
 ## Open
 
-- Copyright holder in `LICENSE`: currently the GitHub handle.
 - Whether to-dos from my other projects move into 311 once it works: yes for
   311 itself and the first of the others (2026-11-09); the rest one by one.
 - Can items be added to or moved into an Archived project? Allowed for now.
