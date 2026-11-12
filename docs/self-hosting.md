@@ -41,8 +41,9 @@ or for **B**:
 curl -fsSLO https://raw.githubusercontent.com/JOL-E/three-one-one/main/compose.yaml
 ```
 
-The app runs as user 1000 and must be able to write to `data/`. Check with
-`id -u`: if it isn't `1000`, run `sudo chown 1000:1000 data`.
+The app runs as user 1000 and must be able to write to `data/`. On Linux, check
+with `id -u`: if it isn't `1000`, run `sudo chown 1000:1000 data`. Docker
+Desktop (Mac, Windows) needs nothing here.
 
 Fill in `.env`:
 
@@ -61,18 +62,22 @@ In the Cloudflare dashboard: **Zero Trust → Networks → Tunnels → Create a
 tunnel**.
 
 1. Connector type **Cloudflared**, any name (`311`).
-2. The next page shows install commands. Copy the long token after `--token`
-   (it starts with `eyJ`) into `TUNNEL_TOKEN` in `.env`. Don't run the commands:
-   the compose file runs cloudflared for you.
-3. Add a **public hostname** (newer dashboards call it a *published
-   application route*):
+2. The next page shows install commands. Choose **Docker** and click the copy
+   button next to the command: it copies the full token, which the page shows
+   masked. Put only the token (after `--token`, it starts with `eyJ`) into
+   `TUNNEL_TOKEN` in `.env`. Don't run the command: the compose file runs
+   cloudflared for you.
+3. Start 311 now: `docker compose up -d` (more in step 3). The page's
+   **Continue** stays disabled until cloudflared has connected; after half a
+   minute it shows the connection.
+4. On the tunnel's page: **Add route → Published application**:
 
    | Field | Value |
    |---|---|
    | Subdomain | `311` |
    | Domain | `example.com` |
-   | Service type | `HTTP` |
-   | URL | `app:8000` |
+   | Path | empty |
+   | Service | `http://app:8000` (where type and URL are separate: `HTTP`, `app:8000`) |
 
    `app` is the 311 container's name on the compose network.
 
@@ -122,7 +127,8 @@ docker compose up -d
 docker compose ps
 ```
 
-After about half a minute the app shows `(healthy)`. Then create your login:
+(With the tunnel, it's already running from 2A.) After about half a minute the
+app shows `(healthy)`. Then create your login:
 
 ```sh
 docker compose exec app python manage.py createsuperuser
@@ -163,7 +169,8 @@ Connectors → **Add custom connector**, URL `https://311.example.com/mcp`, then
 claude mcp add --transport http --scope user 311 https://311.example.com/mcp
 ```
 
-Then `/mcp` in Claude Code → `311` → Authenticate.
+Then start a new Claude Code session (it reads its servers only at start):
+`/mcp` → `311` → Authenticate.
 
 Every connection is listed in 311 under Settings → Connected apps, where you can
 end it.
