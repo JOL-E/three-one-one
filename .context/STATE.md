@@ -2,7 +2,7 @@
 
 _Where we are. Update at the end of every session._
 
-**Last updated:** 2026-11-10
+**Last updated:** 2026-11-11
 
 ## Now
 
@@ -17,11 +17,11 @@ project 311, not here.
 
 ## Next
 
-M7: going public (ROADMAP). Done: clean history in a fresh private repository
-(DECISIONS #61–64), self-hosting guide `docs/self-hosting.md` (#65–66; the
-proxy notes tested locally). Next: SECURITY.md and the switch to public, then
-one literal run of the guide (311 #B468). Smaller work: 311, project 311, top
-first.
+M7: going public (ROADMAP). The repo and image are public since 2026-11-11:
+clean history (DECISIONS #61–64), self-hosting guide `docs/self-hosting.md`
+(#65–66), SECURITY.md and GitHub's security settings (#67–69). Next: one
+literal run of the guide, then clean-up and M7 done (311 #B468). Smaller work:
+311, project 311, top first.
 
 ## Open loops
 
