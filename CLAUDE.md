@@ -1,33 +1,21 @@
 # CLAUDE.md: 311
 
-An inbox for side-project ideas: a phone-friendly app for the owner, plus an
+An inbox for side-project ideas: a phone-friendly app for its owner, plus an
 MCP server so Claude can add, write up and update items. Self-hosted, single
-user, open source (MIT) once it works.
+user, open source (MIT).
 
-Shared context about me, my other projects and my server lives in my private context repo.
+## Public repo
 
-## Mode
-
-**Explain, then build.** I want to understand how MCP works. Before writing
-code, say *why* the approach fits; explain MCP and OAuth mechanics as they come
-up, with the actual requests and responses where that helps. React/TypeScript
-is newer territory for me: explain unfamiliar patterns. Django I know.
-
-- Never commit or push unless I ask. Suggest the message and commands.
-- Never SSH to the Pi. Write a runbook I execute.
-- Architecture and product decisions are mine: propose with a recommendation.
-
-## Written for the public from the first commit
-
-This repo goes public. Treat every file, commit message and issue as public now:
+Every file, commit message and issue is public:
 - No secrets: `.env` is gitignored, only `.env.example` is committed.
-- None of my real data. My ideas live in my database, never in tests,
-  fixtures, examples or screenshots. Synthetic data only.
-- Nothing specific to my setup: no domains, hostnames or usernames in code or
-  docs. Everything deployment-specific is a setting. My own Pi deployment notes
-  live in my private context repo, not here.
+- No real data. Tests, fixtures, examples and screenshots use synthetic data
+  only.
+- Nothing specific to one installation: no domains, hostnames or usernames in
+  code or docs. Everything deployment-specific is a setting.
 - `scripts/check_private_data.py` (pre-commit) enforces this with a gitignored
-  `.private-denylist`.
+  `.private-denylist` (one string per line: your domain, email, names).
+- Architecture and product decisions go to the maintainer as a proposal with a
+  recommendation; once made, they're logged in `.context/DECISIONS.md`.
 
 ## Stack & structure
 
@@ -38,8 +26,8 @@ PWA (frontend), one Docker image. Python deps with `uv`.
   `/mcp` to the MCP SDK, everything else to Django)
 - `backend/inbox/`: models, `services.py` (every rule lives here), `api.py`
   (the app's API at `/api/`, session + CSRF), admin
-- `backend/accounts/`: login, logout, lockout (django-axes) and, from M5, the
-  OAuth server (django-oauth-toolkit). Server-rendered pages, own small CSS.
+- `backend/accounts/`: login, logout, lockout (django-axes) and the OAuth
+  server (django-oauth-toolkit). Server-rendered pages, own small CSS.
 - `backend/mcp_tools/`: MCP server and tools (thin), dev wire logger.
   Never name a package `mcp`: it would shadow the SDK.
 - `frontend/`: React PWA. `src/api/` (generated types + TanStack Query hooks:
@@ -68,7 +56,6 @@ One Docker image for every installation (`Dockerfile`, example `compose.yaml`,
 `deploy/cloudflare/`). Guide for self-hosters: `docs/self-hosting.md`.
 CI (`.github/workflows/ci.yml`) checks every push and publishes the image to
 GHCR from `main` and weekly. Local build: `docker build -t three-one-one .`
-The runbook for my own installation lives in my private context repo, not here.
 
 ## Rules for this project
 
@@ -80,16 +67,11 @@ The runbook for my own installation lives in my private context repo, not here.
 
 ## Where knowledge lives
 
-- `.context/STATE.md`: where we are, next step. ~30 lines.
+- `.context/STATE.md`: where things stand, the maintainer's next step. ~30 lines.
 - `.context/ROADMAP.md`: milestones in order, and why.
 - `.context/DECISIONS.md`: every non-trivial decision, dated, with its why.
 - `.context/ARCHITECTURE.md`: what the code can't say itself.
 - `.context/STYLE_GUIDE.md`: the UI's look and native-feel requirements.
-- To-dos and ideas: in my own 311 installation (project "311", via its MCP
-  tools), not in markdown.
-
-## End of session
-
-Update `.context/STATE.md` (and DECISIONS if something was decided), add new
-to-dos to 311 and mark finished ones done there, then suggest a commit message
-and the commands. Don't commit.
+- `docs/self-hosting.md`: running your own installation.
+- To-dos and ideas aren't kept in markdown; the maintainer tracks them in 311
+  itself.

@@ -345,6 +345,10 @@ use, plus an MCP server so every Claude can read and write the same data.
 69. **`main` is protected against force-pushes and deletion only.** Changes
     still go straight to `main` without pull requests (one maintainer, CI runs
     on every push); rewriting the public history needs a deliberate unlock.
+70. **`CLAUDE.md` is a guide for any contributor**, not the maintainer's
+    personal working style: a contributor's Claude would follow those rules
+    too. The maintainer's own way of working lives outside the repo. The
+    `.context/` docs stay as they are.
 
 ## Open
 
