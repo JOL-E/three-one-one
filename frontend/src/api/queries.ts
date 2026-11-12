@@ -119,7 +119,7 @@ export function useAddItem() {
     mutationFn: async ({ id, title, projectId }) =>
       unwrap(
         await api.POST("/api/items", {
-          body: { id, title, details: "", project_id: projectId ?? null },
+          body: { id, title, details: "", project_id: projectId ?? null, type: "task" },
         }),
       ),
     onMutate: async ({ id, title, projectId }) => {
@@ -130,6 +130,8 @@ export function useAddItem() {
         id,
         short_id: shortIdOf(id),
         project_id: null,
+        type: "task",
+        milestone_id: null,
         title: title.trim(),
         details: "",
         status: "open",

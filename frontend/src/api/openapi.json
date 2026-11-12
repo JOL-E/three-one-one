@@ -296,7 +296,7 @@
             }
           }
         },
-        "description": "Open and doing items top to bottom, then done items, newest first.",
+        "description": "Open and doing items top to bottom, each milestone followed by its tasks; then done, newest first.",
         "tags": [
           "inbox"
         ],
@@ -962,6 +962,26 @@
             ],
             "title": "Project Id"
           },
+          "type": {
+            "enum": [
+              "task",
+              "milestone"
+            ],
+            "title": "Type",
+            "type": "string"
+          },
+          "milestone_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Milestone Id"
+          },
           "title": {
             "title": "Title",
             "type": "string"
@@ -1025,6 +1045,8 @@
           "id",
           "short_id",
           "project_id",
+          "type",
+          "milestone_id",
           "title",
           "details",
           "status",
@@ -1046,6 +1068,18 @@
             },
             "title": "Item Ids",
             "type": "array"
+          },
+          "milestone_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Milestone Id"
           }
         },
         "required": [
@@ -1076,6 +1110,26 @@
               }
             ],
             "title": "Project Id"
+          },
+          "type": {
+            "enum": [
+              "task",
+              "milestone"
+            ],
+            "title": "Type",
+            "type": "string"
+          },
+          "milestone_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Milestone Id"
           },
           "title": {
             "title": "Title",
@@ -1151,6 +1205,8 @@
           "id",
           "short_id",
           "project_id",
+          "type",
+          "milestone_id",
           "title",
           "details",
           "status",
@@ -1186,6 +1242,27 @@
               }
             ],
             "title": "Project Id"
+          },
+          "type": {
+            "default": "task",
+            "enum": [
+              "task",
+              "milestone"
+            ],
+            "title": "Type",
+            "type": "string"
+          },
+          "milestone_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Milestone Id"
           },
           "id": {
             "anyOf": [
@@ -1226,7 +1303,8 @@
               "created",
               "comment",
               "status",
-              "moved"
+              "moved",
+              "type"
             ],
             "title": "Kind",
             "type": "string"
@@ -1283,6 +1361,26 @@
               }
             ],
             "title": "Project Id"
+          },
+          "type": {
+            "enum": [
+              "task",
+              "milestone"
+            ],
+            "title": "Type",
+            "type": "string"
+          },
+          "milestone_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Milestone Id"
           },
           "title": {
             "title": "Title",
@@ -1354,6 +1452,8 @@
           "id",
           "short_id",
           "project_id",
+          "type",
+          "milestone_id",
           "title",
           "details",
           "status",
@@ -1390,6 +1490,21 @@
               }
             ],
             "title": "Details"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "enum": [
+                  "task",
+                  "milestone"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type"
           }
         },
         "title": "ItemPatch",
@@ -1431,6 +1546,18 @@
               }
             ],
             "title": "Project Id"
+          },
+          "milestone_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Milestone Id"
           }
         },
         "required": [

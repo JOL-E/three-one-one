@@ -379,6 +379,24 @@ use, plus an MCP server so every Claude can read and write the same data.
     places it there, dragging it out removes the link.
 76. **Milestones live in 311 only.** `ROADMAP.md` keeps M0–M7 as history and
     gets no new milestones.
+77. **Milestone rules that span rows live in the services only**, an
+    explicit exception to #29 (replaces "SQLite triggers" in #72). Django
+    rebuilds a SQLite table on most migrations that change it and drops its
+    triggers on the way, so every later change to items would have to
+    recreate them; a trigger that cascades moves inside the database would
+    hide logic. The database keeps the one-row rules as check constraints:
+    inbox items are tasks, only tasks have a milestone, nothing is its own
+    milestone. Same project, "links to a milestone" and "no done milestone
+    with open tasks" are services only; the admin can break them.
+78. **MCP:** `move_item` takes a `milestone` (an item id) to join one; moving
+    to the item's own project leaves its milestone. `add_item` takes `type`
+    and `milestone`, `update_item` takes `type`. `reorder_items` orders one
+    level per call: the project's top level, or one milestone's tasks.
+    Positions are numbered per project and milestone.
+79. **Deleting a milestone keeps its tasks:** they lose the link, open ones go
+    to the bottom of the top level.
+80. **Log:** joining or leaving a milestone is a "moved" entry; a type change
+    is a new kind, "type".
 
 ## Open
 

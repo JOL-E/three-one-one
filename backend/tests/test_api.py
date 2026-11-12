@@ -161,3 +161,40 @@ def test_project_with_items_cannot_be_deleted(api: Client) -> None:
     assert api.delete(f"/api/projects/{project.id}").status_code == 400
     services.delete_item(item.id)
     assert api.delete(f"/api/projects/{project.id}").status_code == 204
+
+
+# --- Milestones (DECISIONS #71–80) ---------------------------------------------
+
+
+def test_owner_builds_a_milestone_moves_and_orders_tasks(api: Client) -> None:
+    project = services.create_project("Synthetic")
+    m8 = body(
+        send(api, "post", "/api/items", {"title": "M8", "project_id": str(project.id), "type": "milestone"})
+    )
+    a = body(send(api, "post", "/api/items", {"title": "a", "milestone_id": m8["id"]}))
+    b = body(send(api, "post", "/api/items", {"title": "b", "project_id": str(project.id)}))
+    assert (m8["type"], a["type"], a["milestone_id"], a["project_id"]) == (
+        "milestone",
+        "task",
+        m8["id"],
+        str(project.id),
+    )
+
+    moved = body(
+        send(api, "post", f"/api/items/{b['id']}/move", {"project_id": None, "milestone_id": m8["id"]})
+    )
+    assert (moved["milestone_id"], moved["position"]) == (m8["id"], 1)
+
+    order = {"item_ids": [b["id"], a["id"]], "milestone_id": m8["id"]}
+    response = send(api, "put", f"/api/projects/{project.id}/order", order)
+    assert [i["title"] for i in body(response)] == ["b", "a"]
+
+    out = send(api, "post", f"/api/items/{b['id']}/move", {"project_id": str(project.id)})
+    assert body(out)["milestone_id"] is None
+
+
+def test_owner_changes_a_type_and_sees_it_in_the_log(api: Client) -> None:
+    item = services.add_item("grows", project_id=services.create_project("Synthetic").id)
+    assert body(send(api, "patch", f"/api/items/{item.id}", {"type": "milestone"}))["type"] == "milestone"
+    log = body(api.get(f"/api/items/{item.id}"))["activity"]
+    assert (log[-1]["kind"], log[-1]["old_value"], log[-1]["new_value"]) == ("type", "Task", "Milestone")

@@ -26,7 +26,7 @@ from mcp_types.version import is_version_at_least
 from pydantic import AnyHttpUrl, BaseModel, Field, TypeAdapter
 
 from inbox import services
-from inbox.models import Activity, Author, Item, ItemStatus, Project
+from inbox.models import Activity, Author, Item, ItemStatus, ItemType, Project
 from mcp_tools.auth import SCOPE, TokenCheck
 
 INSTRUCTIONS = """\
@@ -38,6 +38,11 @@ INSTRUCTIONS = """\
   is open, doing or done; inbox items are always open.
 - Items have short ids like 3F9A; the user sees the same ids in the app (#3F9A).
 - A project's open and doing items are in priority order, top first. The user sets it.
+- A milestone is an item of type milestone that groups tasks of its project toward
+  one goal; its details say why. A project's list is milestones and loose tasks, each
+  milestone followed by its tasks (marked with its id). Its top item is the first
+  entry, or that milestone's first open task. A milestone can be done only when
+  all its tasks are.
 - When the user mentions an idea or task worth keeping, add it. It goes to the
   inbox unless the user names a project.
 - Every status change needs a short comment saying why; it is kept in the item's
@@ -82,6 +87,7 @@ server = Server(
 
 ProjectId = Annotated[UUID, Field(description="A project's id, from list_projects.")]
 ItemId = Annotated[str, Field(description="An item's id, like 3F9A.")]
+MilestoneId = Annotated[str | None, Field(description="A milestone's item id, like 3F9A.")]
 
 
 def tool(*, read_only: bool = False, destructive: bool = False) -> Callable[[Callable[..., object]], object]:
@@ -120,6 +126,18 @@ def _resolve_all(refs: list[str]) -> list[UUID]:
     return [services.resolve_item(ref).id for ref in refs]
 
 
+async def resolve_optional(ref: str | None) -> UUID | None:
+    return (await resolve(ref)).id if ref is not None else None
+
+
+def milestone_fields(i: Item, ids: dict[UUID, str]) -> dict[str, str | None]:
+    """Only what differs from a plain task, to save context."""
+    return {
+        "type": i.type if i.type == ItemType.MILESTONE else None,
+        "milestone": ids[i.milestone_id] if i.milestone_id is not None else None,
+    }
+
+
 # --- What the tools return ---------------------------------------------------
 
 
@@ -145,12 +163,14 @@ class ItemSummary(BaseModel):
     id: str  # short id (DECISIONS #40); saves context and matches what the user sees
     title: str
     status: str
+    type: str | None = None  # "milestone"; none = a task
+    milestone: str | None = None  # the short id of the task's milestone
     project: str | None = None  # only in search results; "Inbox" if none
 
     @classmethod
     def of(cls, i: Item, ids: dict[UUID, str], with_project: bool = False) -> ItemSummary:
         project = (i.project.name if i.project else "Inbox") if with_project else None
-        return cls(id=ids[i.id], title=i.title, status=i.status, project=project)
+        return cls(id=ids[i.id], title=i.title, status=i.status, project=project, **milestone_fields(i, ids))
 
 
 class ActivityOut(BaseModel):
@@ -171,6 +191,8 @@ class ItemOut(BaseModel):
     title: str
     details: str | None = None
     status: str
+    type: str | None = None  # "milestone"; none = a task
+    milestone: str | None = None  # the short id of the task's milestone
     project: str | None = Field(None, description="Project name; none = inbox.")
     created_at: datetime
     done_at: datetime | None = None
@@ -187,6 +209,7 @@ class ItemOut(BaseModel):
             created_at=i.created_at,
             done_at=i.done_at,
             activity=[ActivityOut.of(a) for a in activity] if activity is not None else None,
+            **milestone_fields(i, ids),
         )
 
 
@@ -252,19 +275,38 @@ async def add_item(
     title: Annotated[str, Field(description="Short title, one line.")],
     details: Annotated[str, Field(description="Optional longer notes.")] = "",
     project_id: Annotated[UUID | None, Field(description="Omit to add to the inbox.")] = None,
+    type: Literal["task", "milestone"] = "task",
+    milestone: MilestoneId = None,
 ) -> str:
     """Add an item. Without project_id it goes to the inbox.
 
-    With one, it goes to the bottom of that project's list.
+    With one, it goes to the bottom of that project's list; with a milestone, to the
+    bottom of that milestone, in its project. Milestones need a project.
     """
-    item = await run(services.add_item, title, details, project_id, Author.CLAUDE)
+    milestone_id = await resolve_optional(milestone)
+    item = await run(
+        services.add_item,
+        title,
+        details,
+        project_id,
+        Author.CLAUDE,
+        item_type=ItemType(type),
+        milestone_id=milestone_id,
+    )
     return as_text(ItemOut.of(item, await run(services.short_ids)))
 
 
 @tool(destructive=True)
-async def update_item(item_id: ItemId, title: str | None = None, details: str | None = None) -> str:
-    """Replace an item's title and/or details. Status changes go through set_status."""
-    item = await run(services.update_item, (await resolve(item_id)).id, title, details)
+async def update_item(
+    item_id: ItemId,
+    title: str | None = None,
+    details: str | None = None,
+    type: Literal["task", "milestone"] | None = None,
+) -> str:
+    """Replace an item's title and/or details, or change its type. Status changes go through set_status."""
+    item_type = ItemType(type) if type is not None else None
+    ref = (await resolve(item_id)).id
+    item = await run(services.update_item, ref, title, details, item_type, Author.CLAUDE)
     return as_text(ItemOut.of(item, await run(services.short_ids)))
 
 
@@ -290,12 +332,16 @@ async def set_status(
 async def move_item(
     item_id: ItemId,
     project_id: Annotated[UUID | None, Field(description="Omit to move back to the inbox.")] = None,
+    milestone: MilestoneId = None,
 ) -> str:
     """Move an item to a project (to the bottom of its list), or back to the inbox.
 
+    With a milestone, a task joins it (and its project). Moving to the item's own
+    project takes it out of its milestone. A milestone takes its tasks along.
     Only open items can go back to the inbox.
     """
-    item = await run(services.move_item, (await resolve(item_id)).id, project_id, Author.CLAUDE)
+    ref, milestone_id = (await resolve(item_id)).id, await resolve_optional(milestone)
+    item = await run(services.move_item, ref, project_id, Author.CLAUDE, milestone_id)
     return as_text(ItemOut.of(item, await run(services.short_ids)))
 
 
@@ -358,19 +404,23 @@ def can_ask(ctx: Context[Any, Any]) -> bool:
 
 
 async def confirm_order(
-    ctx: Context[Any, Any], project_id: UUID, item_ids: list[str]
+    ctx: Context[Any, Any], project_id: UUID, item_ids: list[str], milestone: str | None
 ) -> Elicit[Confirm] | NotAsked:
     # A resolver: runs before the tool body and gets the tool's arguments by name
     # (and the request context by type). The list is checked before the user is
     # asked, so they never confirm an invalid order. The SDK pins the answer to
     # this exact message: if the list changes between rounds, the user is asked again.
     project = await run(services.get_project, project_id)
-    moves = await run(services.order_moves, project_id, await run(_resolve_all, item_ids))
+    milestone_id = await resolve_optional(milestone)
+    moves = await run(services.order_moves, project_id, await run(_resolve_all, item_ids), milestone_id)
     if not can_ask(ctx):
         # Not a question, so the SDK hands it straight to the tool as "accepted".
         return NotAsked()
     ids = await run(services.short_ids)
-    return Elicit(f"Claude wants to reorder {project.name!r}: {describe(moves, ids)}", Confirm)
+    where = repr(project.name)
+    if milestone_id is not None:
+        where = f"the milestone {shorten((await run(services.get_item, milestone_id)).title)!r} in {where}"
+    return Elicit(f"Claude wants to reorder {where}: {describe(moves, ids)}", Confirm)
 
 
 def describe(moves: list[services.Move], ids: dict[UUID, str], shown: int = 3) -> str:
@@ -392,16 +442,23 @@ def shorten(title: str, width: int = 40) -> str:
 @tool(destructive=True)
 async def reorder_items(
     project_id: ProjectId,
-    item_ids: Annotated[list[str], Field(description="Every open and doing item's id, top first.")],
+    item_ids: Annotated[
+        list[str], Field(description="Every open and doing item's id at that level, top first.")
+    ],
     confirmation: Annotated[ElicitationResult[Confirm | NotAsked], Resolve(confirm_order)],
+    milestone: Annotated[
+        str | None, Field(description="Order this milestone's tasks. Omit for the project's top level.")
+    ] = None,
 ) -> str:
     """Set a project's priority order. Call only when the user asked to reprioritize.
 
+    One level per call: the top level (milestones and loose tasks), or one milestone's tasks.
     Where the app can ask, the user confirms before anything changes; elsewhere the order is applied directly.
     """
     if not isinstance(confirmation, AcceptedElicitation):
         raise ToolError(f"The user did not confirm ({confirmation.action}). The order is unchanged.")
-    items = await run(services.set_order, project_id, await run(_resolve_all, item_ids))
+    milestone_id = await resolve_optional(milestone)
+    items = await run(services.set_order, project_id, await run(_resolve_all, item_ids), milestone_id)
     ids = await run(services.short_ids)
     # Claude never sees the question or the answer (client and server handle
     # them), so the result says what happened.

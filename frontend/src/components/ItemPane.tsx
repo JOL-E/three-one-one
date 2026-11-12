@@ -213,6 +213,7 @@ function what(a: Activity): string {
       return "Comment";
     case "status":
     case "moved":
+    case "type":
       return `${a.old_value} → ${a.new_value}`;
   }
 }

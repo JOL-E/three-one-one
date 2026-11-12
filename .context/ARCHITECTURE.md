@@ -19,6 +19,11 @@ Only what the code can't say itself.
 - **Both doors call the same services.** The UI and the MCP tools are thin; a
   rule (e.g. "status change needs a comment") is enforced once, in the
   services, so neither door can bypass it.
+- **Most rules are also database constraints, the milestone rules that span
+  rows aren't** (same project, links to a milestone, no done milestone with
+  open tasks; DECISIONS #77). Django rebuilds a SQLite table on most
+  migrations and drops its triggers with it, so these live in the services
+  only. The admin writes past the services and can break them.
 - **The MCP door offers fewer verbs than the UI door.** Deleting and changing a
   project's state exist only in the UI.
 

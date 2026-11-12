@@ -18,7 +18,7 @@ from django.middleware.csrf import get_token
 from ninja import Router, Schema, Status
 
 from . import services
-from .models import Activity, Author, Item, ItemStatus, Project, ProjectState
+from .models import Activity, Author, Item, ItemStatus, ItemType, Project, ProjectState
 
 router = Router(tags=["inbox"])
 ME = Author.OWNER
@@ -41,6 +41,8 @@ class ItemOut(Schema):
     id: UUID
     short_id: str
     project_id: UUID | None
+    type: Literal["task", "milestone"]
+    milestone_id: UUID | None  # the milestone a task belongs to (DECISIONS #71)
     title: str
     details: str
     status: Literal["open", "doing", "done"]
@@ -54,7 +56,7 @@ class ItemOut(Schema):
 class ActivityOut(Schema):
     id: UUID
     author: Literal["owner", "claude"]
-    kind: Literal["created", "comment", "status", "moved"]
+    kind: Literal["created", "comment", "status", "moved", "type"]
     text: str
     old_value: str
     new_value: str
@@ -86,19 +88,23 @@ class StateIn(Schema):
 
 
 class OrderIn(Schema):
-    item_ids: list[UUID]  # every open and doing item, top first
+    item_ids: list[UUID]  # every open and doing item of the level, top first
+    milestone_id: UUID | None = None  # null = the project's top level (DECISIONS #78)
 
 
 class ItemIn(Schema):
     title: str
     details: str = ""
     project_id: UUID | None = None
+    type: Literal["task", "milestone"] = "task"
+    milestone_id: UUID | None = None  # joins this milestone, in its project
     id: UUID | None = None  # generated on the device, so the item shows before the answer
 
 
 class ItemPatch(Schema):
     title: str | None = None
     details: str | None = None
+    type: Literal["task", "milestone"] | None = None
 
 
 class StatusIn(Schema):
@@ -107,7 +113,8 @@ class StatusIn(Schema):
 
 
 class MoveIn(Schema):
-    project_id: UUID | None  # null = back to the inbox
+    project_id: UUID | None  # null = back to the inbox; the item's own project = out of its milestone
+    milestone_id: UUID | None = None  # joins this milestone, in its project
 
 
 class CommentIn(Schema):
@@ -138,6 +145,8 @@ def item_fields(i: Item, ids: dict[UUID, str], creators: dict[UUID, str]) -> dic
         "short_id": ids[i.id],
         "created_by": creators.get(i.id, Author.OWNER),
         "project_id": i.project_id,
+        "type": i.type,
+        "milestone_id": i.milestone_id,
         "title": i.title,
         "details": i.details,
         "status": i.status,
@@ -212,13 +221,13 @@ def delete_project(request: HttpRequest, project_id: UUID) -> Status[None]:
 
 @router.get("/projects/{project_id}/items", response=list[ItemOut])
 def project_items(request: HttpRequest, project_id: UUID) -> list[ItemOut]:
-    """Open and doing items top to bottom, then done items, newest first."""
+    """Open and doing items top to bottom, each milestone followed by its tasks; then done, newest first."""
     return items_out(services.list_project_items(project_id))
 
 
 @router.put("/projects/{project_id}/order", response=list[ItemOut])
 def set_order(request: HttpRequest, project_id: UUID, data: OrderIn) -> list[ItemOut]:
-    return items_out(services.set_order(project_id, data.item_ids))
+    return items_out(services.set_order(project_id, data.item_ids, data.milestone_id))
 
 
 # --- Items -----------------------------------------------------------------------
@@ -243,7 +252,15 @@ def search(request: HttpRequest, q: str, include_done: bool = False) -> list[Sea
 
 @router.post("/items", response={201: ItemOut})
 def add_item(request: HttpRequest, data: ItemIn) -> Status[ItemOut]:
-    item = services.add_item(data.title, data.details, data.project_id, ME, item_id=data.id)
+    item = services.add_item(
+        data.title,
+        data.details,
+        data.project_id,
+        ME,
+        item_id=data.id,
+        item_type=ItemType(data.type),
+        milestone_id=data.milestone_id,
+    )
     return Status(201, item_out(item))
 
 
@@ -257,7 +274,8 @@ def get_item(request: HttpRequest, item_id: UUID) -> ItemDetail:
 
 @router.patch("/items/{item_id}", response=ItemOut)
 def update_item(request: HttpRequest, item_id: UUID, data: ItemPatch) -> ItemOut:
-    return item_out(services.update_item(item_id, data.title, data.details))
+    item_type = ItemType(data.type) if data.type is not None else None
+    return item_out(services.update_item(item_id, data.title, data.details, item_type, ME))
 
 
 @router.post("/items/{item_id}/status", response=ItemOut)
@@ -267,7 +285,7 @@ def set_status(request: HttpRequest, item_id: UUID, data: StatusIn) -> ItemOut:
 
 @router.post("/items/{item_id}/move", response=ItemOut)
 def move_item(request: HttpRequest, item_id: UUID, data: MoveIn) -> ItemOut:
-    return item_out(services.move_item(item_id, data.project_id, ME))
+    return item_out(services.move_item(item_id, data.project_id, ME, data.milestone_id))
 
 
 @router.post("/items/{item_id}/comments", response={201: ActivityOut})

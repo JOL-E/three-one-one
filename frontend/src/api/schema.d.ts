@@ -123,7 +123,7 @@ export interface paths {
         };
         /**
          * Project Items
-         * @description Open and doing items top to bottom, then done items, newest first.
+         * @description Open and doing items top to bottom, each milestone followed by its tasks; then done, newest first.
          */
         get: operations["inbox_api_project_items"];
         put?: never;
@@ -381,6 +381,13 @@ export interface components {
             short_id: string;
             /** Project Id */
             project_id: string | null;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "task" | "milestone";
+            /** Milestone Id */
+            milestone_id: string | null;
             /** Title */
             title: string;
             /** Details */
@@ -414,6 +421,8 @@ export interface components {
         OrderIn: {
             /** Item Ids */
             item_ids: string[];
+            /** Milestone Id */
+            milestone_id?: string | null;
         };
         /** SearchHit */
         SearchHit: {
@@ -426,6 +435,13 @@ export interface components {
             short_id: string;
             /** Project Id */
             project_id: string | null;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "task" | "milestone";
+            /** Milestone Id */
+            milestone_id: string | null;
             /** Title */
             title: string;
             /** Details */
@@ -468,6 +484,14 @@ export interface components {
             details: string;
             /** Project Id */
             project_id?: string | null;
+            /**
+             * Type
+             * @default task
+             * @enum {string}
+             */
+            type: "task" | "milestone";
+            /** Milestone Id */
+            milestone_id?: string | null;
             /** Id */
             id?: string | null;
         };
@@ -487,7 +511,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "created" | "comment" | "status" | "moved";
+            kind: "created" | "comment" | "status" | "moved" | "type";
             /** Text */
             text: string;
             /** Old Value */
@@ -511,6 +535,13 @@ export interface components {
             short_id: string;
             /** Project Id */
             project_id: string | null;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "task" | "milestone";
+            /** Milestone Id */
+            milestone_id: string | null;
             /** Title */
             title: string;
             /** Details */
@@ -548,6 +579,8 @@ export interface components {
             title?: string | null;
             /** Details */
             details?: string | null;
+            /** Type */
+            type?: ("task" | "milestone") | null;
         };
         /** StatusIn */
         StatusIn: {
@@ -563,6 +596,8 @@ export interface components {
         MoveIn: {
             /** Project Id */
             project_id: string | null;
+            /** Milestone Id */
+            milestone_id?: string | null;
         };
         /** CommentIn */
         CommentIn: {

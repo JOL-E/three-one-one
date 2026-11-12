@@ -8,7 +8,7 @@ import pytest
 from starlette.testclient import TestClient
 
 from inbox import services
-from inbox.models import Item, Project
+from inbox.models import Item, ItemType, Project
 
 # transaction=True: the MCP app runs the services in another thread, which must see
 # committed data. serialized_rollback restores the General project after the flush.
@@ -258,6 +258,49 @@ def test_invalid_order_refused_before_asking(client: TestClient, ranked: Any) ->
     result = reorder(client, args, CAN_ELICIT)["result"]
     assert result["isError"] is True
     assert "exactly once" in result["content"][0]["text"]
+
+
+# --- Milestones (DECISIONS #71–80) ---------------------------------------------
+
+
+def test_claude_builds_a_milestone_and_sorts_tasks_into_it(client: TestClient) -> None:
+    project = str(services.create_project("Synthetic").id)
+    m8 = call(client, "add_item", title="M8", project_id=project, type="milestone")
+    a = call(client, "add_item", title="a", milestone=m8["id"])
+    loose = call(client, "add_item", title="loose", project_id=project)
+    assert (m8["type"], a["milestone"], a["project"]) == ("milestone", m8["id"], "Synthetic")
+    assert "type" not in a and "milestone" not in loose  # plain tasks stay compact
+
+    call(client, "move_item", item_id=loose["id"], milestone=m8["id"])
+    listed = call(client, "list_items", project_id=project)
+    assert [(i["title"], i.get("milestone")) for i in listed] == [
+        ("M8", None),
+        ("a", m8["id"]),
+        ("loose", m8["id"]),
+    ]
+
+    call(client, "move_item", item_id=loose["id"], project_id=project)  # out of the milestone again
+    assert "milestone" not in call(client, "get_item", item_id=loose["id"])
+
+    changed = call(client, "update_item", item_id=loose["id"], type="milestone")
+    assert changed["type"] == "milestone"
+    assert call(client, "get_item", item_id=loose["id"])["activity"][-1]["change"] == "Task -> Milestone"
+
+
+def test_reorder_inside_a_milestone(client: TestClient) -> None:
+    project = services.create_project("Synthetic")
+    m8 = services.add_item("M8", project_id=project.id, item_type=ItemType.MILESTONE)
+    a, b = (services.add_item(t, milestone_id=m8.id) for t in "ab")
+    args = {"project_id": str(project.id), "item_ids": [str(b.id), str(a.id)], "milestone": str(m8.id)}
+
+    first = reorder(client, args, CAN_ELICIT)["result"]
+    [request] = first["inputRequests"].values()
+    assert request["params"]["message"].startswith(
+        "Claude wants to reorder the milestone 'M8' in 'Synthetic':"
+    )
+
+    assert "applied unconfirmed" in call(client, "reorder_items", **args)
+    assert order(project) == ["M8", "b", "a"]
 
 
 # --- Short ids (DECISIONS #40) and project edits (#37) -----------------------

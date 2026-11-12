@@ -54,6 +54,11 @@ class ItemStatus(models.TextChoices):
     DONE = "done", "Done"
 
 
+class ItemType(models.TextChoices):
+    TASK = "task", "Task"
+    MILESTONE = "milestone", "Milestone"
+
+
 # Items that take part in a project's priority order: in a project and not done.
 _RANKED = Q(project__isnull=False) & ~Q(status=ItemStatus.DONE)
 
@@ -64,10 +69,17 @@ class Item(models.Model):
     project = models.ForeignKey(
         Project, null=True, blank=True, on_delete=models.PROTECT, related_name="items"
     )
+    type = models.CharField(max_length=20, choices=ItemType.choices, default=ItemType.TASK)
+    # The milestone a task belongs to (DECISIONS #71). Same project and "links to a
+    # milestone" are kept by the services only (#77). Deleting a milestone keeps its tasks (#79).
+    milestone = models.ForeignKey(
+        "self", null=True, blank=True, on_delete=models.SET_NULL, related_name="tasks"
+    )
     title = models.CharField(max_length=200)
     details = models.TextField(blank=True)
     status = models.CharField(max_length=20, choices=ItemStatus.choices, default=ItemStatus.OPEN)
-    # Priority within the project, 0 = top (DECISIONS #6). Only ranked items have one.
+    # Priority, 0 = top (DECISIONS #6), counted per project and milestone (#78):
+    # the project's top level, or one milestone's tasks. Only ranked items have one.
     position = models.PositiveIntegerField(null=True, blank=True)
     done_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -77,6 +89,17 @@ class Item(models.Model):
         ordering = ["position", "-created_at"]
         constraints = [
             models.CheckConstraint(condition=Q(status__in=ItemStatus.values), name="item_status_valid"),
+            models.CheckConstraint(condition=Q(type__in=ItemType.values), name="item_type_valid"),
+            models.CheckConstraint(
+                condition=Q(project__isnull=False) | Q(type=ItemType.TASK), name="inbox_items_are_tasks"
+            ),
+            models.CheckConstraint(
+                condition=Q(milestone__isnull=True) | Q(type=ItemType.TASK), name="only_tasks_in_milestones"
+            ),
+            models.CheckConstraint(
+                condition=Q(milestone__isnull=True) | ~Q(milestone=models.F("id")),
+                name="not_its_own_milestone",
+            ),
             models.CheckConstraint(
                 condition=Q(project__isnull=False) | Q(status=ItemStatus.OPEN),
                 name="inbox_items_are_open",
@@ -106,6 +129,7 @@ class ActivityKind(models.TextChoices):
     COMMENT = "comment", "Comment"
     STATUS = "status", "Status changed"
     MOVED = "moved", "Moved"
+    TYPE = "type", "Type changed"
 
 
 class Activity(models.Model):
