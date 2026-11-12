@@ -20,6 +20,6 @@ In order. Each milestone ends with something that works and that I understand.
   backups, running on my Pi, connected as a custom connector in claude.ai.
   Then import the items parked in my private context repo and delete that list. ✅
 - **M7 Public:** self-hosting docs (Cloudflare Tunnel, notes for your own
-  proxy), SECURITY.md, a history check, flip the repo to public.
+  proxy), SECURITY.md, a history check, flip the repo to public. ✅
 
 **Later:** smaller work and ideas are items in 311 itself (project 311).

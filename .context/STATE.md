@@ -17,11 +17,10 @@ project 311, not here.
 
 ## Next
 
-M7: going public (ROADMAP). The repo and image are public since 2026-11-11:
-clean history (DECISIONS #61–64), self-hosting guide `docs/self-hosting.md`
-(#65–66), SECURITY.md and GitHub's security settings (#67–69). Next: one
-literal run of the guide, then clean-up and M7 done (311 #B468). Smaller work:
-311, project 311, top first.
+All milestones done (ROADMAP). M7: public since 2026-11-11, with a clean history
+(DECISIONS #61–64), a self-hosting guide followed once from scratch (#65–66),
+SECURITY.md and GitHub's security settings (#67–69). From here on, all work is
+items in 311, project 311, top first.
 
 ## Open loops
 
