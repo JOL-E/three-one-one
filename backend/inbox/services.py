@@ -113,9 +113,9 @@ def list_projects(include_archived: bool = False) -> list[Project]:
 
 
 def open_item_counts() -> dict[UUID, int]:
-    """Open and doing items per project (the sidebar's numbers)."""
+    """Open and doing tasks per project (the sidebar's numbers); milestones don't count (#85)."""
     rows = (
-        Item.objects.filter(project__isnull=False)
+        Item.objects.filter(project__isnull=False, type=ItemType.TASK)
         .exclude(status=ItemStatus.DONE)
         .values("project")
         .annotate(n=Count("id"))

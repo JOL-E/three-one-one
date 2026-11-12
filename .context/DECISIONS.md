@@ -397,6 +397,28 @@ use, plus an MCP server so every Claude can read and write the same data.
     to the bottom of the top level.
 80. **Log:** joining or leaving a milestone is a "moved" entry; a type change
     is a new kind, "type".
+81. **A project's list is a React Aria `Tree` with the browser's own drag and
+    drop**, replacing motion's `Reorder`, the grip handle and the item pane's
+    Top/Up/Down buttons (#39; unused, keyboard dragging covers them): long-press
+    to lift on touch, drag with a mouse, keyboard and screen-reader dragging
+    built in, drops onto a row and between rows, no new dependency. iOS sets
+    the lift time; while held, a row sinks over about that time as the hint.
+    Rejected: dnd-kit (new dependency, tree code of our own; it would allow a
+    shorter delay), one `Reorder` list per level (no drop onto a milestone).
+    No haptics: Safari has no API, and the known workaround (toggling a
+    hidden switch) only works after a finished tap, which a drag never is.
+82. **Milestones start expanded; collapsing is remembered per device**
+    (browser storage, not the server).
+83. **Closed section:** a done milestone is one row that expands to its done
+    tasks; done tasks of an open milestone are plain closed rows with the
+    milestone's name in their meta line.
+84. **Creating:** a milestone is made from a task with "Make milestone" in
+    the item pane (and back with "Make task"); the add field adds tasks only,
+    one behaviour per field. A milestone's pane lists its tasks with a
+    "+ Add to …" field. Not inside the tree: the tree would read
+    typing as jumping to a row, and a long-press in the field could start a
+    drag.
+85. **Open-item counts in the sidebar count tasks only**, not milestones.
 
 ## Open
 

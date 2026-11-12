@@ -13,6 +13,7 @@ import {
 } from "@tanstack/react-query";
 
 import { shortIdOf } from "../lib/format";
+import { flatten } from "../lib/milestones";
 import { api, ApiError, unwrap } from "./client";
 import type { Connection, Item, ItemStatus, Project, ProjectState } from "./types";
 
@@ -109,21 +110,33 @@ export function useSearch(q: string) {
 
 // --- Items -------------------------------------------------------------------------
 
-type NewItem = { title: string; projectId?: string | null };
+type NewItem = {
+  title: string;
+  projectId?: string | null;
+  type?: Item["type"];
+  milestoneId?: string | null; // joins this milestone, in its project
+};
 
 /** Capture an idea. The id is made on the device (DECISIONS #10), so the item shows,
  *  and can be opened, before the server answers. */
 export function useAddItem() {
   const qc = useQueryClient();
   const mutation = useMutation<Item, Error, NewItem & { id: string }, Rollback>({
-    mutationFn: async ({ id, title, projectId }) =>
+    mutationFn: async ({ id, title, projectId, type, milestoneId }) =>
       unwrap(
         await api.POST("/api/items", {
-          body: { id, title, details: "", project_id: projectId ?? null, type: "task" },
+          body: {
+            id,
+            title,
+            details: "",
+            project_id: projectId ?? null,
+            type: type ?? "task",
+            milestone_id: milestoneId ?? null,
+          },
         }),
       ),
-    onMutate: async ({ id, title, projectId }) => {
-      if (projectId) return {};
+    onMutate: async ({ id, title, projectId, milestoneId }) => {
+      if (projectId || milestoneId) return {};
       await qc.cancelQueries({ queryKey: keys.inbox });
       const now = new Date().toISOString();
       const draft: Item = {
@@ -155,7 +168,7 @@ export function useAddItem() {
 export function useUpdateItem(itemId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (body: { title?: string; details?: string }) =>
+    mutationFn: async (body: { title?: string; details?: string; type?: Item["type"] }) =>
       unwrap(
         await api.PATCH("/api/items/{item_id}", { params: { path: { item_id: itemId } }, body }),
       ),
@@ -231,28 +244,42 @@ export function useDeleteItem() {
   });
 }
 
-/** A project's new priority order: every open and doing item, top first. */
-export function useSetOrder(projectId: string) {
+/** A drop in a project's list (DECISIONS #75): into or out of a milestone if the
+ *  level changes, then the new order of the level the item landed in. Two requests;
+ *  if the second fails, the item is in the right place, just at the bottom. */
+export function usePlaceItem(projectId: string) {
   const qc = useQueryClient();
-  return useMutation<Item[], Error, string[], Rollback>({
-    mutationFn: async (itemIds) =>
-      unwrap(
-        await api.PUT("/api/projects/{project_id}/order", {
-          params: { path: { project_id: projectId } },
-          body: { item_ids: itemIds },
-        }),
-      ),
-    onMutate: async (itemIds) => {
+  type Placement = { item: Item; milestoneId: string | null; order: string[] };
+  return useMutation<void, Error, Placement, Rollback>({
+    mutationFn: async ({ item, milestoneId, order }) => {
+      if (item.milestone_id !== milestoneId) {
+        unwrap(
+          await api.POST("/api/items/{item_id}/move", {
+            params: { path: { item_id: item.id } },
+            body: { project_id: projectId, milestone_id: milestoneId },
+          }),
+        );
+      }
+      if (order.length > 1) {
+        unwrap(
+          await api.PUT("/api/projects/{project_id}/order", {
+            params: { path: { project_id: projectId } },
+            body: { item_ids: order, milestone_id: milestoneId },
+          }),
+        );
+      }
+    },
+    onMutate: async ({ item, milestoneId, order }) => {
       await qc.cancelQueries({ queryKey: keys.projectItems(projectId) });
-      const reorder = (items: Item[]) => {
-        const byId = new Map(items.map((i) => [i.id, i]));
-        const ranked = itemIds.flatMap((id, n) => {
-          const item = byId.get(id);
-          return item ? [{ ...item, position: n }] : [];
-        });
-        return [...ranked, ...items.filter((i) => i.status === "done")];
-      };
-      return { rollback: patchLists(qc, reorder, [keys.projectItems(projectId)]) };
+      const place = (items: Item[]) =>
+        flatten(
+          items.map((i) => {
+            const at = order.indexOf(i.id);
+            const moved = i.id === item.id ? { ...i, milestone_id: milestoneId } : i;
+            return at === -1 ? moved : { ...moved, position: at };
+          }),
+        );
+      return { rollback: patchLists(qc, place, [keys.projectItems(projectId)]) };
     },
     onError: (_e, _v, ctx) => ctx?.rollback?.(),
     onSettled: () => refreshAll(qc),

@@ -57,8 +57,12 @@ as their text, so they invert with the theme.
 - **Author:** `CLAUDE` in accent, `ME` in `text`, mono uppercase.
 - **Log entry:** date column (mono, `muted`) + "AUTHOR · WHAT" line + the
   comment in the sans. Hairline between entries, newest first.
-- **Priority:** two-digit rank (`01`) in mono at the left, drag handle (≡) at
-  the right, 44 pt hit area.
+- **Priority:** order is position in the list. Long-press (touch) or drag
+  (mouse) a row to move it; while held it sinks a little, so you see the lift
+  coming (DECISIONS #81). No handle.
+- **Milestone:** a row lined up with loose tasks, title in bold; under it a
+  mono line ("▸ 3 tasks · 1 done") that opens its tasks, indented. The same
+  in the open list and under "Closed".
 - **Rules from the services show up in the UI:** "Mark done" opens a sheet
   asking why (a status change needs a comment, DECISIONS #5).
 

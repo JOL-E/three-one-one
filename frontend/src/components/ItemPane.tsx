@@ -1,14 +1,23 @@
 import { useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router";
 
-import { useAddComment, useItem, useProjectItems, useProjects, useSetOrder } from "../api/queries";
+import {
+  useAddComment,
+  useAddItem,
+  useItem,
+  useProjectItems,
+  useProjects,
+  useUpdateItem,
+} from "../api/queries";
 import type { Activity, Item, ItemDetail, ItemStatus } from "../api/types";
-import { day, rank } from "../lib/format";
+import { day } from "../lib/format";
+import { progress } from "../lib/milestones";
 import { useEdgeSwipeBack, useGoBack } from "../lib/navigation";
 import { useIsDesktop } from "../lib/useMediaQuery";
 import { BackIcon, MoreIcon } from "./icons";
 import { ActionMenu } from "./Menu";
 import { DeleteItemSheet, EditItemSheet, MoveSheet, StatusSheet } from "./sheets";
+import { ItemRow } from "./ItemRow";
 import { Button, ShortId, Stamp } from "./ui";
 
 /** One item: details, what can happen next, its log, and a comment bar. */
@@ -31,6 +40,8 @@ export function ItemPane({
   const [deleting, setDeleting] = useState(false);
   const [statusTo, setStatusTo] = useState<ItemStatus | null>(null);
   const item = query.data;
+  const update = useUpdateItem(itemId);
+  const milestone = item?.type === "milestone";
 
   return (
     <div
@@ -58,6 +69,15 @@ export function ItemPane({
             actions={[
               { label: "Edit", onAction: () => setEditing(true) },
               { label: "Move to…", onAction: () => setMoving(true) },
+              // DECISIONS #74: the server refuses a change that would break a rule, with a toast.
+              ...(item.project_id
+                ? [
+                    {
+                      label: milestone ? "Make task" : "Make milestone",
+                      onAction: () => update.mutate({ type: milestone ? "task" : "milestone" }),
+                    },
+                  ]
+                : []),
               { label: "Delete", onAction: () => setDeleting(true), danger: true },
             ]}
           />
@@ -77,7 +97,7 @@ export function ItemPane({
             <Header item={item} />
             <div className="flex flex-col gap-5 px-5 py-5 lg:px-7">
               <Actions item={item} onStatus={setStatusTo} onMove={() => setMoving(true)} />
-              <Priority item={item} />
+              {milestone ? <MilestoneTasks milestone={item} /> : null}
               <Log activity={item.activity} />
             </div>
           </div>
@@ -108,6 +128,7 @@ function Header({ item }: { item: ItemDetail }) {
     <header className="border-rule flex flex-col gap-2.5 border-b-2 px-5 pt-2 pb-4 lg:px-7">
       <div className="flex items-center gap-2.5">
         <ShortId id={item.short_id} />
+        {item.type === "milestone" ? <span className="label text-muted">Milestone</span> : null}
         <Stamp status={item.status} />
         {item.status === "done" ? <span className="label text-muted">Closed</span> : null}
         <span className="label text-muted ml-auto truncate">
@@ -172,36 +193,57 @@ function Actions({
   );
 }
 
-/** Rank within the project, with buttons: the keyboard-friendly way to reorder (DECISIONS #39). */
-function Priority({ item }: { item: Item }) {
-  const ranked = item.project_id !== null && item.status !== "done";
-  const items = useProjectItems(ranked ? item.project_id : null);
-  const setOrder = useSetOrder(item.project_id ?? "");
-  if (!ranked || !items.data) return null;
-  const order = items.data.filter((i) => i.status !== "done").map((i) => i.id);
-  const at = order.indexOf(item.id);
-  if (at < 0) return null;
-  const moveTo = (to: number) => {
-    const next = order.filter((id) => id !== item.id);
-    next.splice(Math.max(0, Math.min(to, next.length)), 0, item.id);
-    setOrder.mutate(next);
+/** A milestone's tasks, open ones first, and a field to add one (DECISIONS #84). */
+function MilestoneTasks({ milestone }: { milestone: Item }) {
+  const items = useProjectItems(milestone.project_id);
+  const { add } = useAddItem();
+  const [title, setTitle] = useState("");
+  if (!items.data) return null;
+  const tasks = items.data.filter((i) => i.milestone_id === milestone.id);
+  const { done, total } = progress(items.data, milestone.id);
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    if (!title.trim()) return;
+    add({ title, milestoneId: milestone.id });
+    setTitle("");
   };
-  const small = "h-9 px-3 text-[11px]";
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <span className="label text-muted mr-2">
-        Priority <span className="text-text">{rank(at)}</span> / {rank(order.length - 1)}
-      </span>
-      <Button className={small} disabled={at === 0} onClick={() => moveTo(0)}>
-        Top
-      </Button>
-      <Button className={small} disabled={at === 0} onClick={() => moveTo(at - 1)}>
-        Up
-      </Button>
-      <Button className={small} disabled={at === order.length - 1} onClick={() => moveTo(at + 1)}>
-        Down
-      </Button>
-    </div>
+    <section className="flex flex-col">
+      <h2 className="label text-muted m-0 mb-2">
+        Tasks · {done}/{total}
+      </h2>
+      {tasks.length > 0 ? (
+        <ul className="border-hairline -mx-5 m-0 list-none border-t p-0 lg:-mx-7">
+          {tasks.map((task) => (
+            <li key={task.id}>
+              <ItemRow
+                item={task}
+                to={`/p/${milestone.project_id}/${task.id}`}
+                meta={
+                  task.status === "done" && task.done_at ? `Done ${day(task.done_at)}` : undefined
+                }
+              />
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {milestone.status !== "done" ? (
+        <form onSubmit={submit} className="pt-3">
+          <label htmlFor="add-to-milestone" className="sr-only">
+            Add a task to {milestone.title}
+          </label>
+          <input
+            id="add-to-milestone"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder={`+ Add to ${milestone.title}`}
+            enterKeyHint="done"
+            autoComplete="off"
+            className="border-dash text-text focus:border-accent h-11 w-full border border-dashed bg-transparent px-3 text-[16px] outline-none focus:border-solid"
+          />
+        </form>
+      ) : null}
+    </section>
   );
 }
 

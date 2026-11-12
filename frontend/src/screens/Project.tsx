@@ -1,15 +1,16 @@
-import { Reorder, useDragControls } from "motion/react";
-import { useEffect, useRef, useState, type FormEvent } from "react";
-import { Link, useParams } from "react-router";
+import { useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useParams } from "react-router";
 
-import { useAddItem, useProjectItems, useProjects, useSetOrder } from "../api/queries";
+import { useAddItem, useProjectItems, useProjects } from "../api/queries";
 import type { Item, Project } from "../api/types";
-import { GripIcon } from "../components/icons";
+import { ChevronIcon } from "../components/icons";
 import { ItemRow } from "../components/ItemRow";
 import { ListDetail } from "../components/ListDetail";
+import { ProjectTree } from "../components/ProjectTree";
 import { ProjectSheet } from "../components/sheets";
-import { Button, Empty, ScreenHeader, ShortId, SkeletonRows, Stamp } from "../components/ui";
+import { Button, Empty, ScreenHeader, SkeletonRows } from "../components/ui";
 import { day } from "../lib/format";
+import { tasksLabel } from "../lib/milestones";
 import { useEdgeSwipeBack, useGoBack } from "../lib/navigation";
 import { useIsDesktop } from "../lib/useMediaQuery";
 
@@ -75,32 +76,16 @@ function ProjectList({ project, selectedId }: { project: Project; selectedId?: s
         <>
           <div className="label text-muted flex justify-between px-5 pt-3 pb-1.5 lg:px-7">
             <span>Priority</span>
-            {ranked.length > 1 ? <span>Drag ≡ to reorder</span> : null}
+            {ranked.length > 1 ? <span>{desktop ? "Drag" : "Hold"} to move</span> : null}
           </div>
           {ranked.length === 0 ? (
             <Empty>Nothing open here.</Empty>
           ) : (
-            <RankedList project={project} items={ranked} selectedId={selectedId} />
+            <ProjectTree project={project} items={items.data ?? []} selectedId={selectedId} />
           )}
           <AddToProject project={project} />
           {done.length > 0 ? (
-            <section>
-              <h2 className="label text-muted m-0 px-5 pt-5 pb-2 lg:px-7">
-                Closed · {done.length}
-              </h2>
-              <ul className="border-hairline m-0 list-none border-t p-0">
-                {done.map((item) => (
-                  <li key={item.id}>
-                    <ItemRow
-                      item={item}
-                      to={`/p/${project.id}/${item.id}`}
-                      selected={item.id === selectedId}
-                      meta={item.done_at ? `Done ${day(item.done_at)}` : "Done"}
-                    />
-                  </li>
-                ))}
-              </ul>
-            </section>
+            <Closed project={project} items={items.data ?? []} selectedId={selectedId} />
           ) : null}
         </>
       )}
@@ -114,8 +99,9 @@ function ProjectList({ project, selectedId }: { project: Project; selectedId?: s
   );
 }
 
-/** Drag-to-sort (DECISIONS #39): the order is local while dragging and sent on drop. */
-function RankedList({
+/** Done items (DECISIONS #83): a done milestone is one row that opens to its tasks; a
+ *  done task of a milestone still open names it. */
+function Closed({
   project,
   items,
   selectedId,
@@ -124,90 +110,73 @@ function RankedList({
   items: Item[];
   selectedId?: string;
 }) {
-  const [order, setOrder] = useState(items);
-  const setServerOrder = useSetOrder(project.id);
-
-  // Follow the server whenever its list changes (new item, status change, refetch):
-  // React's "adjust state while rendering" pattern, no effect needed.
-  const serverKey = items.map((i) => `${i.id}:${i.status}:${i.title}`).join(",");
-  const [seenKey, setSeenKey] = useState(serverKey);
-  if (serverKey !== seenKey) {
-    setSeenKey(serverKey);
-    setOrder(items);
-  }
-
-  // motion keeps the drop handler from when the drag started, so the handler reads the
-  // latest order from a ref (kept current by an effect) rather than from its closure.
-  const latest = useRef({ order, items });
-  useEffect(() => {
-    latest.current = { order, items };
-  }, [order, items]);
-  const commit = () => {
-    const ids = latest.current.order.map((i) => i.id);
-    if (ids.join() !== latest.current.items.map((i) => i.id).join()) setServerOrder.mutate(ids);
-  };
-
+  const done = items.filter((i) => i.status === "done");
+  const titleOf = new Map(items.map((i) => [i.id, i.title]));
+  const doneMilestones = new Set(done.filter((i) => i.type === "milestone").map((i) => i.id));
+  const inDoneMilestone = (i: Item) =>
+    i.milestone_id !== null && doneMilestones.has(i.milestone_id);
+  const row = (item: Item, meta?: string) => (
+    <ItemRow
+      item={item}
+      to={`/p/${project.id}/${item.id}`}
+      selected={item.id === selectedId}
+      meta={[item.done_at ? `Done ${day(item.done_at)}` : "Done", meta].filter(Boolean).join(" · ")}
+    />
+  );
   return (
-    <Reorder.Group
-      as="ol"
-      axis="y"
-      values={order}
-      onReorder={setOrder}
-      className="border-hairline m-0 list-none border-t p-0"
-    >
-      {order.map((item) => (
-        <RankedRow
-          key={item.id}
-          item={item}
-          to={`/p/${project.id}/${item.id}`}
-          selected={item.id === selectedId}
-          onDrop={commit}
-        />
-      ))}
-    </Reorder.Group>
+    <section>
+      <h2 className="label text-muted m-0 px-5 pt-5 pb-2 lg:px-7">Closed · {done.length}</h2>
+      <ul className="border-hairline m-0 list-none border-t p-0">
+        {done
+          .filter((i) => !inDoneMilestone(i))
+          .map((item) => (
+            <li key={item.id}>
+              {item.type === "milestone" ? (
+                <ClosedMilestone tasks={done.filter((i) => i.milestone_id === item.id)} row={row}>
+                  {row(item, "Milestone")}
+                </ClosedMilestone>
+              ) : (
+                row(item, item.milestone_id ? titleOf.get(item.milestone_id) : undefined)
+              )}
+            </li>
+          ))}
+      </ul>
+    </section>
   );
 }
 
-function RankedRow({
-  item,
-  to,
-  selected,
-  onDrop,
+function ClosedMilestone({
+  tasks,
+  row,
+  children,
 }: {
-  item: Item;
-  to: string;
-  selected: boolean;
-  onDrop: () => void;
+  tasks: Item[];
+  row: (item: Item) => ReactNode;
+  children: ReactNode;
 }) {
-  // Only the handle starts a drag, so the rest of the row still scrolls the list.
-  const controls = useDragControls();
+  const [open, setOpen] = useState(false);
   return (
-    <Reorder.Item
-      value={item}
-      dragListener={false}
-      dragControls={controls}
-      onDragEnd={onDrop}
-      className={`bg-surface border-hairline relative flex h-14 items-center gap-3.5 border-b pr-1 pl-5 lg:pl-7 ${
-        selected ? "outline-text outline-2 -outline-offset-2" : ""
-      }`}
-    >
-      <ShortId id={item.short_id} className="shrink-0" />
-      <Link
-        to={to}
-        className={`min-w-0 flex-1 truncate text-[16px] ${item.status === "doing" ? "font-semibold" : ""}`}
-      >
-        {item.title}
-      </Link>
-      <Stamp status={item.status} />
-      <button
-        type="button"
-        aria-label={`Drag to reorder ${item.title}`}
-        onPointerDown={(e) => controls.start(e)}
-        className="text-muted flex h-11 w-11 shrink-0 cursor-grab touch-none items-center justify-center"
-      >
-        <GripIcon size={20} />
-      </button>
-    </Reorder.Item>
+    <>
+      {children}
+      {tasks.length > 0 ? (
+        <button
+          type="button"
+          aria-expanded={open}
+          onClick={() => setOpen(!open)}
+          className="label text-muted border-hairline flex h-11 w-full items-center gap-2 border-b pl-12 text-left tracking-[0.06em] lg:pl-14"
+        >
+          <ChevronIcon size={14} className={`transition-transform ${open ? "rotate-90" : ""}`} />
+          {tasksLabel({ done: tasks.length, total: tasks.length })}
+        </button>
+      ) : null}
+      {open ? (
+        <ul className="m-0 list-none p-0 pl-7">
+          {tasks.map((task) => (
+            <li key={task.id}>{row(task)}</li>
+          ))}
+        </ul>
+      ) : null}
+    </>
   );
 }
 

@@ -259,3 +259,9 @@ def test_db_rejects_an_item_as_its_own_milestone(m8: Item) -> None:
     item = task("x", project=m8.project)
     with pytest.raises(IntegrityError), transaction.atomic():
         Item.objects.filter(pk=item.id).update(milestone=item)
+
+
+def test_sidebar_counts_tasks_not_milestones(project: Project, m8: Item) -> None:
+    task("a", m8)
+    task("loose", project=project)
+    assert services.open_item_counts()[project.id] == 2
