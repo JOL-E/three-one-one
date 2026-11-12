@@ -23,3 +23,4 @@ In order. Each milestone ends with something that works and that I understand.
   proxy), SECURITY.md, a history check, flip the repo to public. ✅
 
 **Later:** smaller work and ideas are items in 311 itself (project 311).
+New milestones are milestone items there, not entries here (DECISIONS #76).

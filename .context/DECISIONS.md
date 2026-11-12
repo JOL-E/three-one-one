@@ -350,6 +350,36 @@ use, plus an MCP server so every Claude can read and write the same data.
     too. The maintainer's own way of working lives outside the repo. The
     `.context/` docs stay as they are.
 
+## 2026-11-12: Milestones
+
+71. **Milestones are items of type `milestone`; a task joins one through an
+    explicit link** (`Item.type`, nullable `Item.milestone`, one level only).
+    Chosen over a separate Milestone table: a milestone gets an id, details,
+    comments, an activity log and a status for free, and the existing MCP
+    tools work on it (#32). Rejected: the title convention ("M7: …",
+    "part 1/3"), grouping by position (a reorder would silently change
+    membership; done items lose their position, #27), tags (unordered).
+72. **Rules:** only a task can be in a milestone, and only in a milestone of
+    its own project; inbox items are always tasks. A milestone can't be done
+    while it has open or doing tasks, so adding or reopening a task in a done
+    milestone is refused: reopen the milestone first. Rules that span rows are SQLite triggers
+    in migrations (keeps #29), tested directly; services check first for
+    readable messages. Done tasks keep their link, so a milestone's progress
+    and what shipped in it stay visible.
+73. **Order: one mixed list per project** of milestones and loose tasks;
+    tasks in a milestone are ordered inside it (extends #6, #27). The
+    project's top item is the first entry, or that milestone's first open
+    task.
+74. **Type can change:** task → milestone only if it isn't in a milestone,
+    milestone → task only if it has no tasks. **Moving a milestone to another
+    project moves all its tasks** (done ones too); moving a task alone drops
+    its link.
+75. **UI:** milestones show as collapsible groups. Dropping an item on a
+    milestone's header adds it at the bottom, dropping it between its tasks
+    places it there, dragging it out removes the link.
+76. **Milestones live in 311 only.** `ROADMAP.md` keeps M0–M7 as history and
+    gets no new milestones.
+
 ## Open
 
 - Whether to-dos from my other projects move into 311 once it works: yes for
