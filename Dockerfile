@@ -12,7 +12,7 @@ COPY frontend/ ./
 RUN npm run build
 
 # uv, only to install the Python packages; it doesn't end up in the image.
-FROM ghcr.io/astral-sh/uv:0.13.7 AS uv
+FROM ghcr.io/astral-sh/uv:0.13.9 AS uv
 
 # 2. The server: Python, the packages, the code, the built app.
 FROM python:3.14-slim
