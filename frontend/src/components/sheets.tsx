@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 
 import { logOut } from "../api/client";
 import {
+  useAddItem,
   useConnections,
   useCreateProject,
   useDeleteItem,
@@ -136,6 +137,44 @@ export function EditItemSheet({
         <Field label="Details" value={details} onChange={setDetails} multiline />
         <Button type="submit" tone="accent" disabled={!title.trim() || update.isPending}>
           Save
+        </Button>
+      </form>
+    </Sheet>
+  );
+}
+
+/** A new milestone at the bottom of the project (DECISIONS #88). Its details say why. */
+export function NewMilestoneSheet({
+  project,
+  isOpen,
+  onClose,
+}: {
+  project: Project;
+  isOpen: boolean;
+  onClose: () => void;
+}) {
+  const [title, setTitle] = useState("");
+  const [details, setDetails] = useState("");
+  const { add } = useAddItem();
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    if (!title.trim()) return;
+    add({ title, details: details.trim(), projectId: project.id, type: "milestone" });
+    onClose();
+  };
+  return (
+    <Sheet isOpen={isOpen} onClose={onClose} title={`New milestone · ${project.name}`}>
+      <form onSubmit={submit} className="flex flex-col gap-4">
+        <Field label="Title" value={title} onChange={setTitle} autoFocus />
+        <Field
+          label="Details"
+          value={details}
+          onChange={setDetails}
+          multiline
+          placeholder="Why this milestone?"
+        />
+        <Button type="submit" tone="accent" disabled={!title.trim()}>
+          Add milestone
         </Button>
       </form>
     </Sheet>

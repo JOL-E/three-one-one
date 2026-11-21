@@ -18,7 +18,7 @@ import { BackIcon, MoreIcon } from "./icons";
 import { ActionMenu } from "./Menu";
 import { DeleteItemSheet, EditItemSheet, MoveSheet, StatusSheet } from "./sheets";
 import { ItemRow } from "./ItemRow";
-import { Button, ShortId, Stamp } from "./ui";
+import { Button, ShortId, Stamp, TextBox } from "./ui";
 
 /** One item: details, what can happen next, its log, and a comment bar. */
 export function ItemPane({
@@ -227,14 +227,15 @@ function MilestoneTasks({ milestone }: { milestone: Item }) {
           <label htmlFor="add-to-milestone" className="sr-only">
             Add a task to {milestone.title}
           </label>
-          <input
+          <TextBox
             id="add-to-milestone"
+            oneLine
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={setTitle}
             placeholder={`+ Add to ${milestone.title}`}
             enterKeyHint="done"
             autoComplete="off"
-            className="border-dash text-text focus:border-accent h-11 w-full border border-dashed bg-transparent px-3 text-[16px] outline-none focus:border-solid"
+            className="border-dash text-text focus:border-accent block min-h-11 w-full border border-dashed bg-transparent px-3 py-2.5 text-[16px] outline-none focus:border-solid"
           />
         </form>
       ) : null}
@@ -297,16 +298,16 @@ function CommentBar({ itemId }: { itemId: string }) {
   };
   return (
     <form onSubmit={submit} className="border-rule bg-ground pb-safe shrink-0 border-t-2">
-      <div className="flex gap-2 px-5 pt-3 pb-3 lg:px-7">
+      <div className="flex items-end gap-2 px-5 pt-3 pb-3 lg:px-7">
         <label htmlFor={`comment-${itemId}`} className="sr-only">
           Comment
         </label>
-        <input
+        <TextBox
           id={`comment-${itemId}`}
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={setText}
           placeholder="Add to the log…"
-          className="border-rule bg-surface text-text focus:border-accent h-11 min-w-0 flex-1 border-2 px-3 outline-none"
+          className="border-rule bg-surface text-text focus:border-accent max-h-[40vh] min-h-11 min-w-0 flex-1 border-2 px-3 py-2.5 outline-none"
         />
         <Button type="submit" tone="ink" disabled={!text.trim() || comment.isPending}>
           Log

@@ -112,6 +112,7 @@ export function useSearch(q: string) {
 
 type NewItem = {
   title: string;
+  details?: string;
   projectId?: string | null;
   type?: Item["type"];
   milestoneId?: string | null; // joins this milestone, in its project
@@ -122,20 +123,20 @@ type NewItem = {
 export function useAddItem() {
   const qc = useQueryClient();
   const mutation = useMutation<Item, Error, NewItem & { id: string }, Rollback>({
-    mutationFn: async ({ id, title, projectId, type, milestoneId }) =>
+    mutationFn: async ({ id, title, details, projectId, type, milestoneId }) =>
       unwrap(
         await api.POST("/api/items", {
           body: {
             id,
             title,
-            details: "",
+            details: details ?? "",
             project_id: projectId ?? null,
             type: type ?? "task",
             milestone_id: milestoneId ?? null,
           },
         }),
       ),
-    onMutate: async ({ id, title, projectId, milestoneId }) => {
+    onMutate: async ({ id, title, details, projectId, milestoneId }) => {
       if (projectId || milestoneId) return {};
       await qc.cancelQueries({ queryKey: keys.inbox });
       const now = new Date().toISOString();
@@ -146,7 +147,7 @@ export function useAddItem() {
         type: "task",
         milestone_id: null,
         title: title.trim(),
-        details: "",
+        details: details ?? "",
         status: "open",
         created_by: "owner",
         position: null,

@@ -1,4 +1,12 @@
-import { useEffect, useState, type ButtonHTMLAttributes, type ReactNode } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ButtonHTMLAttributes,
+  type ReactNode,
+  type TextareaHTMLAttributes,
+} from "react";
 import { Link } from "react-router";
 
 import type { ItemStatus } from "../api/types";
@@ -173,5 +181,45 @@ export function Toaster() {
     >
       {message}
     </div>
+  );
+}
+
+/** A text field that grows with its text (DECISIONS #87).
+ *  `oneLine` (titles): long text wraps, but Return submits the form and line breaks
+ *  become spaces, so a title stays one line. Otherwise Return is a new line and
+ *  ⌘/Ctrl+Return submits. */
+export function TextBox({
+  value,
+  onChange,
+  oneLine = false,
+  ...rest
+}: Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "value" | "onChange"> & {
+  value: string;
+  onChange: (value: string) => void;
+  oneLine?: boolean;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    const node = ref.current;
+    if (!node) return;
+    node.style.height = "auto";
+    node.style.height = `${node.scrollHeight + node.offsetHeight - node.clientHeight}px`;
+  }, [value]);
+  return (
+    <textarea
+      ref={ref}
+      rows={1}
+      value={value}
+      onChange={(e) => onChange(oneLine ? e.target.value.replace(/\r?\n/g, " ") : e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key !== "Enter" || e.nativeEvent.isComposing) return;
+        if (oneLine || e.metaKey || e.ctrlKey) {
+          e.preventDefault();
+          e.currentTarget.form?.requestSubmit();
+        }
+      }}
+      {...rest}
+      className={`resize-none overflow-y-auto leading-snug ${rest.className ?? ""}`}
+    />
   );
 }

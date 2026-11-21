@@ -7,7 +7,7 @@ import { ItemRow } from "../components/ItemRow";
 import { ListDetail } from "../components/ListDetail";
 import { DeleteItemSheet, MoveSheet } from "../components/sheets";
 import { SwipeRow } from "../components/SwipeRow";
-import { Empty, ScreenHeader, SkeletonRows } from "../components/ui";
+import { Empty, ScreenHeader, SkeletonRows, TextBox } from "../components/ui";
 
 export function InboxScreen() {
   const { itemId } = useParams();
@@ -56,15 +56,18 @@ function InboxList({ selectedId }: { selectedId?: string }) {
   );
 }
 
-/** Quick capture: type, hit return, it's in the inbox (shown before the server answers). */
+/** Quick capture: type, hit return, it's in the inbox (shown before the server answers).
+ *  Once there's a title, an optional details field appears below it (DECISIONS #87). */
 function CaptureForm() {
   const [title, setTitle] = useState("");
+  const [details, setDetails] = useState("");
   const { add } = useAddItem();
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
-    add({ title });
+    add({ title, details: details.trim() });
     setTitle("");
+    setDetails("");
   };
   return (
     <form
@@ -74,15 +77,16 @@ function CaptureForm() {
       <label htmlFor="capture" className="label text-muted text-[12px]">
         Capture
       </label>
-      <div className="flex gap-2">
-        <input
+      <div className="flex items-start gap-2">
+        <TextBox
           id="capture"
+          oneLine
           value={title}
-          onChange={(e) => setTitle(e.target.value)}
+          onChange={setTitle}
           placeholder="What's the idea?"
           enterKeyHint="send"
           autoComplete="off"
-          className="border-rule bg-surface text-text focus:border-accent h-12 min-w-0 flex-1 border-2 px-3.5 text-[17px] outline-none"
+          className="border-rule bg-surface text-text focus:border-accent min-h-12 min-w-0 flex-1 border-2 px-3.5 py-3 text-[17px] outline-none"
         />
         <button
           type="submit"
@@ -92,6 +96,20 @@ function CaptureForm() {
           File it
         </button>
       </div>
+      {title || details ? (
+        <>
+          <label htmlFor="capture-details" className="sr-only">
+            Details
+          </label>
+          <TextBox
+            id="capture-details"
+            value={details}
+            onChange={setDetails}
+            placeholder="Details (optional)"
+            className="border-rule bg-surface text-text focus:border-accent max-h-[40vh] min-h-12 border-2 px-3.5 py-3 text-[16px] outline-none"
+          />
+        </>
+      ) : null}
     </form>
   );
 }

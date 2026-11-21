@@ -431,6 +431,20 @@ use, plus an MCP server so every Claude can read and write the same data.
     swiping, not the previous screen: the app changes screens itself, so iOS
     has no snapshot.
 
+## 2026-11-21: Text fields and new milestones
+
+87. **Text fields grow with their text.** Titles (capture, "+ Add to …") wrap
+    but stay one line: Return files the item and pasted line breaks become
+    spaces, because lists, search and MCP treat a title as one line. Details
+    and comments take line breaks: Return is a new line, the button sends,
+    and on a Mac ⌘Return sends too. Capture shows an optional details field
+    once a title is typed.
+88. **"+ Milestone" next to a project's add field** opens a sheet with title
+    and details (why), so a milestone takes one step. Extends #84: the add
+    field still adds tasks only. Rejected: a task/milestone switch in the
+    field (one field, two behaviours), a "New milestone" entry in the
+    project's Edit sheet (hidden).
+
 ## Open
 
 - Whether to-dos from my other projects move into 311 once it works: yes for
