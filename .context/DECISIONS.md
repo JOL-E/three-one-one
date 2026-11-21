@@ -420,6 +420,17 @@ use, plus an MCP server so every Claude can read and write the same data.
     drag.
 85. **Open-item counts in the sidebar count tasks only**, not milestones.
 
+## 2026-11-21: Back swipe
+
+86. **Swipe-back is left to iOS; the app's own edge swipe is gone.** Current
+    iOS gives installed web apps a native back swipe, so ours ran on top of it
+    and one swipe went back two screens (#A2AA). Rejected: keeping ours and
+    skipping it when iOS has already gone back (two animations at once), or
+    only on older iOS (no way to detect the native gesture). Older iOS loses
+    swipe-back and keeps the back button. iOS shows a blank background while
+    swiping, not the previous screen: the app changes screens itself, so iOS
+    has no snapshot.
+
 ## Open
 
 - Whether to-dos from my other projects move into 311 once it works: yes for

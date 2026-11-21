@@ -86,7 +86,7 @@ as their text, so they invert with the theme.
   selection on controls.
 - iOS-style transitions: push/pop between screens; sheets slide up and can be
   dragged down to dismiss. Spring-like easing, ~300 ms. Respect "Reduce Motion".
-- Swipe from the left edge to go back (installed PWAs don't get it for free).
+- Swiping from the left edge to go back is iOS's own (DECISIONS #86); don't add one.
 - Swipe actions on rows: Move, Delete.
 - Pull-to-refresh on lists; no rubber-band on the whole page.
 

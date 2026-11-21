@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
 import { useParams } from "react-router";
 
 import { useAddItem, useProjectItems, useProjects } from "../api/queries";
@@ -11,7 +11,6 @@ import { ProjectSheet } from "../components/sheets";
 import { Button, Empty, ScreenHeader, SkeletonRows } from "../components/ui";
 import { day } from "../lib/format";
 import { tasksLabel } from "../lib/milestones";
-import { useEdgeSwipeBack, useGoBack } from "../lib/navigation";
 import { useIsDesktop } from "../lib/useMediaQuery";
 
 export function ProjectScreen() {
@@ -33,15 +32,12 @@ function ProjectList({ project, selectedId }: { project: Project; selectedId?: s
   const desktop = useIsDesktop();
   const items = useProjectItems(project.id);
   const [editing, setEditing] = useState(false);
-  const goBack = useGoBack("/projects");
-  const screen = useRef<HTMLDivElement>(null);
-  useEdgeSwipeBack(screen, goBack, !desktop && !selectedId);
 
   const ranked = (items.data ?? []).filter((i) => i.status !== "done");
   const done = (items.data ?? []).filter((i) => i.status === "done");
 
   return (
-    <div ref={screen} className={desktop ? "" : "animate-push-in bg-ground min-h-full"}>
+    <div className={desktop ? "" : "animate-push-in bg-ground min-h-full"}>
       <ScreenHeader
         title={project.name}
         back={{ to: "/projects", label: "Projects" }}

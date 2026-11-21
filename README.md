@@ -31,9 +31,9 @@ number, goes to the right place and is tracked until it's closed.
   goes into the item's activity log, next to comments and every other change.
 - **Search** across the inbox and every project. Items have short ids like
   `#3F9A`, the same ones Claude uses.
-- **Feels like a native app.** Add it to your iPhone's home screen: swipe back
-  from the edge, swipe rows to move or delete, sheets that slide up. On a Mac,
-  list and detail sit side by side. Dark by default, light if you prefer.
+- **Feels like a native app.** Add it to your iPhone's home screen: swipe
+  rows to move or delete, sheets that slide up. On a Mac, list and detail sit
+  side by side. Dark by default, light if you prefer.
 - **Connected apps:** every Claude you've connected is listed in Settings, and
   disconnecting one ends its access at once.
 

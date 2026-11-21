@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router";
 
 import {
@@ -12,7 +12,7 @@ import {
 import type { Activity, Item, ItemDetail, ItemStatus } from "../api/types";
 import { day } from "../lib/format";
 import { progress } from "../lib/milestones";
-import { useEdgeSwipeBack, useGoBack } from "../lib/navigation";
+import { useGoBack } from "../lib/navigation";
 import { useIsDesktop } from "../lib/useMediaQuery";
 import { BackIcon, MoreIcon } from "./icons";
 import { ActionMenu } from "./Menu";
@@ -32,8 +32,6 @@ export function ItemPane({
   const query = useItem(itemId);
   const goBack = useGoBack(back.to);
   const navigate = useNavigate();
-  const screen = useRef<HTMLDivElement>(null);
-  useEdgeSwipeBack(screen, goBack, !desktop);
 
   const [moving, setMoving] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -44,10 +42,7 @@ export function ItemPane({
   const milestone = item?.type === "milestone";
 
   return (
-    <div
-      ref={screen}
-      className={`bg-surface flex h-full min-h-0 flex-col ${desktop ? "" : "animate-push-in"}`}
-    >
+    <div className={`bg-surface flex h-full min-h-0 flex-col ${desktop ? "" : "animate-push-in"}`}>
       <div className="pt-edge flex shrink-0 items-center justify-between px-2 lg:px-4 lg:pt-3">
         {desktop ? (
           <span />
