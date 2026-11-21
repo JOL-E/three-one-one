@@ -437,8 +437,8 @@ use, plus an MCP server so every Claude can read and write the same data.
     but stay one line: Return files the item and pasted line breaks become
     spaces, because lists, search and MCP treat a title as one line. Details
     and comments take line breaks: Return is a new line, the button sends,
-    and on a Mac ⌘Return sends too. Capture shows an optional details field
-    once a title is typed.
+    and on a Mac ⌘Return sends too. Capture and the "+ Add to …" fields
+    show an optional details field once a title is typed.
 88. **"+ Milestone" next to a project's add field** opens a sheet with title
     and details (why), so a milestone takes one step. Extends #84: the add
     field still adds tasks only. Rejected: a task/milestone switch in the

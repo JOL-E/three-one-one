@@ -1,14 +1,15 @@
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { useParams } from "react-router";
 
 import { useAddItem, useProjectItems, useProjects } from "../api/queries";
 import type { Item, Project } from "../api/types";
+import { AddField } from "../components/AddField";
 import { ChevronIcon } from "../components/icons";
 import { ItemRow } from "../components/ItemRow";
 import { ListDetail } from "../components/ListDetail";
 import { ProjectTree } from "../components/ProjectTree";
 import { NewMilestoneSheet, ProjectSheet } from "../components/sheets";
-import { Button, Empty, ScreenHeader, SkeletonRows, TextBox } from "../components/ui";
+import { Button, Empty, ScreenHeader, SkeletonRows } from "../components/ui";
 import { day } from "../lib/format";
 import { tasksLabel } from "../lib/milestones";
 import { useIsDesktop } from "../lib/useMediaQuery";
@@ -177,33 +178,17 @@ function ClosedMilestone({
 }
 
 function AddToProject({ project }: { project: Project }) {
-  const [title, setTitle] = useState("");
   const { add } = useAddItem();
   const [newMilestone, setNewMilestone] = useState(false);
-  const submit = (e: FormEvent) => {
-    e.preventDefault();
-    if (!title.trim()) return;
-    add({ title, projectId: project.id });
-    setTitle("");
-  };
   // The field adds tasks only; milestones get their own button and sheet (DECISIONS #84, #88).
   return (
     <div className="flex items-start gap-2 px-5 py-3 lg:px-7">
-      <form onSubmit={submit} className="min-w-0 flex-1">
-        <label htmlFor="add-to-project" className="sr-only">
-          Add an item to {project.name}
-        </label>
-        <TextBox
-          id="add-to-project"
-          oneLine
-          value={title}
-          onChange={setTitle}
-          placeholder={`+ Add to ${project.name}`}
-          enterKeyHint="done"
-          autoComplete="off"
-          className="border-dash text-text focus:border-accent block min-h-11 w-full border border-dashed bg-transparent px-3 py-2.5 text-[16px] outline-none focus:border-solid"
-        />
-      </form>
+      <AddField
+        id="add-to-project"
+        label={`Add an item to ${project.name}`}
+        placeholder={`+ Add to ${project.name}`}
+        onAdd={(item) => add({ ...item, projectId: project.id })}
+      />
       <Button className="h-11 shrink-0 px-3" onClick={() => setNewMilestone(true)}>
         + Milestone
       </Button>

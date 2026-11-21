@@ -14,6 +14,7 @@ import { day } from "../lib/format";
 import { progress } from "../lib/milestones";
 import { useGoBack } from "../lib/navigation";
 import { useIsDesktop } from "../lib/useMediaQuery";
+import { AddField } from "./AddField";
 import { BackIcon, MoreIcon } from "./icons";
 import { ActionMenu } from "./Menu";
 import { DeleteItemSheet, EditItemSheet, MoveSheet, StatusSheet } from "./sheets";
@@ -192,16 +193,9 @@ function Actions({
 function MilestoneTasks({ milestone }: { milestone: Item }) {
   const items = useProjectItems(milestone.project_id);
   const { add } = useAddItem();
-  const [title, setTitle] = useState("");
   if (!items.data) return null;
   const tasks = items.data.filter((i) => i.milestone_id === milestone.id);
   const { done, total } = progress(items.data, milestone.id);
-  const submit = (e: FormEvent) => {
-    e.preventDefault();
-    if (!title.trim()) return;
-    add({ title, milestoneId: milestone.id });
-    setTitle("");
-  };
   return (
     <section className="flex flex-col">
       <h2 className="label text-muted m-0 mb-2">
@@ -223,21 +217,14 @@ function MilestoneTasks({ milestone }: { milestone: Item }) {
         </ul>
       ) : null}
       {milestone.status !== "done" ? (
-        <form onSubmit={submit} className="pt-3">
-          <label htmlFor="add-to-milestone" className="sr-only">
-            Add a task to {milestone.title}
-          </label>
-          <TextBox
+        <div className="pt-3">
+          <AddField
             id="add-to-milestone"
-            oneLine
-            value={title}
-            onChange={setTitle}
+            label={`Add a task to ${milestone.title}`}
             placeholder={`+ Add to ${milestone.title}`}
-            enterKeyHint="done"
-            autoComplete="off"
-            className="border-dash text-text focus:border-accent block min-h-11 w-full border border-dashed bg-transparent px-3 py-2.5 text-[16px] outline-none focus:border-solid"
+            onAdd={(item) => add({ ...item, milestoneId: milestone.id })}
           />
-        </form>
+        </div>
       ) : null}
     </section>
   );
